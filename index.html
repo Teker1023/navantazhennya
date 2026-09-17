@@ -54,11 +54,15 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 /* ---------- каркас ---------- */
 .app{display:grid;grid-template-columns:268px minmax(0,1fr);min-height:100vh}
 .side{position:sticky;top:0;height:100vh;background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;padding:18px 12px;gap:4px;overflow-y:auto}
-.brand{display:flex;align-items:center;gap:11px;padding:4px 8px 18px}
-.logo{width:38px;height:38px;border-radius:10px;background:var(--accent);display:grid;place-items:center;flex:none}
-.logo svg.i{width:22px;height:22px;stroke:#fff}
-.brand b{display:block;font:600 19px/1.1 var(--display);color:#fff}
-.brand span{display:block;font-size:12px;color:var(--side-muted);margin-top:2px}
+.brand{display:flex;align-items:center;gap:11px;padding:4px 8px 18px;min-width:0}
+.logo{width:40px;height:40px;border-radius:11px;background:var(--accent);display:grid;place-items:center;flex:none;overflow:hidden;position:relative}
+.logo svg.i{width:23px;height:23px;stroke:#fff}
+.logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.brand-t{min-width:0;display:flex;flex-direction:column;gap:1px}
+.brand-t b{font:600 18px/1.15 var(--display);color:#fff}
+.brand-t span{font-size:11.5px;line-height:1.3;color:var(--side-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand-t #schoolLbl{color:#C2CCDE}
+.brand-t span:empty{display:none}
 .nav-h{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--side-muted);font-weight:600;padding:14px 10px 6px}
 .nav-sep{height:1px;background:rgba(255,255,255,.08);margin:10px 8px}
 .nav{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;color:var(--side-ink);text-align:left;padding:9px 10px;border-radius:10px;position:relative}
@@ -311,7 +315,7 @@ body.dragging::after{content:"Відпустіть файли, щоб заван
   .app{grid-template-columns:1fr}
   .side{position:sticky;top:0;z-index:40;height:auto;flex-direction:row;align-items:center;padding:8px 10px;overflow-x:auto;gap:2px}
   .brand{padding:0 8px 0 2px}
-  .brand div,.nav-h,.nav-sep,.side-foot,.nav-t small{display:none}
+  .brand-t,.nav-h,.nav-sep,.side-foot,.nav-t small{display:none}
   #steps{display:flex;gap:2px}
   .nav{width:auto;padding:7px 9px;gap:8px}
   .nav[aria-current="page"]::before{display:none}
@@ -338,7 +342,10 @@ body.dragging::after{content:"Відпустіть файли, щоб заван
 <body>
 <div class="app">
   <aside class="side">
-    <div class="brand"><span class="logo"><svg class="i" viewBox="0 0 24 24"><path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/></svg></span><div><b>Навантаження</b><span id="schoolLbl"></span></div></div>
+    <div class="brand">
+      <span class="logo"><img id="logoImg" src="logo.gif" alt=""><svg class="i" viewBox="0 0 24 24"><path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/></svg></span>
+      <div class="brand-t"><b>Навантаження</b><span id="schoolLbl"></span><span id="yearLbl"></span></div>
+    </div>
     <nav id="steps" aria-label="Кроки"></nav>
     <div class="side-foot" id="saveState"></div>
   </aside>
@@ -934,7 +941,9 @@ function renderNav() {
   $('#steps').innerHTML = item('help', ic('help'), 'Як це працює', '', 'plain') + '<div class="nav-h">Кроки</div>' +
     STEPS.map((s, i) => { const [txt, st] = s.s(p); return item(s.k, st === 'ok' ? ic('check') : i + 1, s.t, txt, st); }).join('') +
     '<div class="nav-sep"></div>' + item('settings', ic('data'), 'Дані і копії', '', 'plain');
-  $('#schoolLbl').textContent = [S.school, S.year + ' н. р.'].filter(Boolean).join(' · ');
+  const sl = $('#schoolLbl'), yl = $('#yearLbl');
+  sl.textContent = S.school; sl.title = S.school;
+  yl.textContent = S.year + ' н. р.';
 }
 function render() {
   renderNav();
@@ -1530,6 +1539,9 @@ addEventListener('drop', e => {
 });
 document.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details[data-bulk]')) bulk.open = e.target.open; }, true);
 addEventListener('beforeprint', () => { if (TAB !== 'load') go('load'); });
+
+/* якщо logo.gif у папці нема — лишається стандартний значок */
+$('#logoImg').addEventListener('error', e => e.target.remove());
 
 addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 addEventListener('pagehide', () => flush());
