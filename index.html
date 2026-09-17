@@ -428,31 +428,71 @@ function estHours(dates) {
   for (const c of wk.values()) freq[c] = (freq[c] || 0) + 1;
   return +Object.entries(freq).sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0];
 }
+/* Коди учнів замість прізвищ: сіль + ПІБ → незворотний хеш + стать (m/f/?).
+   Потрібні, щоб порівнювати списки різних журналів (групи, вибулі учні), не зберігаючи імен. */
+function cyrb53(str, seed = 0) {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+function rosterCode(name) {
+  const norm = name.toLowerCase().replace(/[’'`ʼ]/g, '').replace(/\s+/g, ' ').trim(), last = norm.split(' ').pop();
+  const sex = /(ович|евич|йович|ич|огли)$/.test(last) ? 'm' : /(івна|ївна|вна|кизи)$/.test(last) ? 'f' : '?';
+  return cyrb53(S.salt + '|' + norm) + sex;
+}
+const codeSet = r => new Set(r.map(x => x.slice(0, -1)));
+const overlap = (a, b) => { let n = 0; for (const x of a) if (b.has(x)) n++; return n; };
+const sameKids = (a, b) => overlap(a, b) >= 0.5 * Math.min(a.size, b.size);
+
+/* Учні класу = об'єднання списків усіх його журналів */
+function recount(c) {
+  const all = new Map();
+  for (const j of Object.values(c.journals || {})) for (const x of j.r) all.set(x.slice(0, -1), x.slice(-1));
+  if (!all.size) return;
+  c.students = all.size;
+  c.boys = [...all.values()].filter(x => x === 'm').length;
+  c.girls = [...all.values()].filter(x => x === 'f').length;
+}
+
+/* Групи предмета в класі за журналами: різні діти → різні групи; ті самі діти → одна група (заміна / спільне ведення) */
+function rebuildGroups(c, s) {
+  const J = Object.values(c.journals || {}).filter(j => j.s === s.id && j.r.length);
+  if (!J.length) return {};
+  const units = [];
+  for (const j of J.sort((a, b) => (a.g || 9) - (b.g || 9) || a.at - b.at)) {
+    const set = codeSet(j.r), u = units.find(u => sameKids(u.set, set));
+    if (u) { set.forEach(x => u.set.add(x)); u.js.push(j); } else units.push({ set, js: [j] });
+  }
+  if (!units.some(u => u.js.some(j => byId(S.teachers, j.t)))) return { groups: units.length };
+  const base = c.id + '|' + s.id, p = S.plan[base] || (S.plan[base] = {});
+  const teacherOf = u => u.js.filter(j => byId(S.teachers, j.t)).sort((a, b) => b.at - a.at)[0]?.t || '';
+  const shared = units.some(u => new Set(u.js.map(j => j.t).filter(Boolean)).size > 1);
+  if (units.length > 1) {
+    if (units.length !== autoGroups(c, s)) p.g = units.length; else delete p.g;
+    p.gi = true;
+  } else if (p.gi) { delete p.g; delete p.gi; }
+  for (let i = 0; i < 6; i++) delete S.assign[base + '|' + i];
+  const g = groupsOf(c, s);
+  if (units.length > 1) units.forEach((u, i) => { const t = teacherOf(u); if (t && i < g) S.assign[base + '|' + i] = t; });
+  else { const t = teacherOf(units[0]); if (t) for (let i = 0; i < g; i++) S.assign[base + '|' + i] = t; }
+  if (!p.h && !p.g) delete S.plan[base];
+  return { groups: units.length, shared };
+}
+
 function applyImport(info, res) {
   if (!info.cls) {
     const ans = prompt(`Не вдалося визначити клас у файлі «${info.file}». Вкажіть клас (напр. 7-А):`);
     if (!ans) { res.push({ file: info.file, err: 'пропущено — клас не вказано' }); return; }
     info.cls = normClass(ans);
   }
+  if (!S.salt) S.salt = uid() + uid() + uid();
   let c = S.classes.find(x => x.name === info.cls);
   const isNew = !c;
   if (!c) { c = { id: uid(), name: info.cls, students: null }; S.classes.push(c); }
-  /* Кількість учнів класу беремо з найбільшого журналу. Журнал групи містить лише частину класу,
-     тому він не зменшує кількість: ні в межах одного імпорту, ні пізніше (якщо менше 70 % класу). */
-  const n = info.students.length, batch = res.classMax || (res.classMax = {});
-  let countKept = false, partial = !!info.group;
-  if (n) {
-    partial = !!info.group || n < (batch[c.name] || 0) || (!batch[c.name] && c.students && n < c.students * 0.7);
-    if (!partial) {
-      const last = x => x.trim().split(/\s+/).pop();
-      batch[c.name] = n;
-      c.students = n;
-      c.boys = info.students.filter(x => /(ович|евич|йович|ич|огли)$/i.test(last(x))).length;
-      c.girls = info.students.filter(x => /(івна|ївна|вна|кизи)$/i.test(last(x))).length;
-    } else countKept = true;
-  }
   c.src = 'Мрія';
-  let s = null, est = null, planSet = false;
+  let s = null, est = null, planSet = false, t = null;
   if (info.subj) {
     s = findSubject(info.subj);
     if (!s) { s = { id: uid(), name: info.subj, split: guessSplit(info.subj) }; S.subjects.push(s); }
@@ -460,7 +500,6 @@ function applyImport(info, res) {
     const k = c.id + '|' + s.id;
     if (est && !S.plan[k]?.h) { S.plan[k] = { ...S.plan[k], h: est, est: true }; planSet = true; }
   }
-  let t = null, assigned = false, split = 0;
   if (info.teacher) {
     /* «Рябець Олександр» і «Рябець Олександр Андрійович» — одна людина */
     const words = n => n.toLowerCase().split(/\s+/);
@@ -468,32 +507,25 @@ function applyImport(info, res) {
     t = S.teachers.find(x => same(x.name, info.teacher));
     if (!t) { t = { id: uid(), name: info.teacher, note: '' }; S.teachers.push(t); }
     else if (info.teacher.length > t.name.length) t.name = info.teacher;
-    if (s && hoursOf(c, s)) {
-      const base = c.id + '|' + s.id, p = S.plan[base];
-      const setGroups = n => { if (n !== autoGroups(c, s)) p.g = n; else delete p.g; split = n; };
-      const keys = () => [...Array(groupsOf(c, s))].map((_, i) => base + '|' + i);
-      if (info.group) {
-        /* номер групи вказано в назві журналу */
-        if (groupsOf(c, s) < info.group) setGroups(info.group);
-        const k = base + '|' + (info.group - 1);
-        if (S.assign[k] !== t.id) { S.assign[k] = t.id; assigned = true; }
-      } else {
-        const holder = k => byId(S.teachers, S.assign[k]) ? S.assign[k] : '';
-        const free = () => keys().filter(k => !holder(k));
-        if (!keys().some(k => holder(k) === t.id)) {
-          let k = free()[0];
-          /* групу вже закрив інший вчитель «журналом на весь клас» — забираємо в нього одну з його груп */
-          if (!k) k = keys().slice().reverse().find(x => keys().filter(y => holder(y) === holder(x)).length > 1);
-          /* другий вчитель на тому ж предметі, а вільних груп нема — отже, клас поділено */
-          if (!k && groupsOf(c, s) < 3) { setGroups(groupsOf(c, s) + 1); k = free()[0]; }
-          if (k) { S.assign[k] = t.id; assigned = true; }
-        }
-        /* журнал на весь клас: вчитель веде й решту груп, поки їх ніхто не забрав */
-        if (!partial) for (const k of free()) { S.assign[k] = t.id; assigned = true; }
-      }
-    }
   }
-  res.push({ file: info.file, cls: c.name, isNew, students: info.students.length, boys: c.boys, girls: c.girls, subj: s?.name, est, planSet, teacher: t?.name, assigned, split, group: info.group, countKept, classCount: c.students });
+  let out = {};
+  const r = info.students.map(rosterCode);
+  if (s && r.length) {
+    c.journals = c.journals || {};
+    /* той самий вчитель може вести дві групи одного предмета — тоді два журнали з різними дітьми */
+    const k0 = s.id + '|' + (t?.id || '') + '|' + (info.group || 0), set = codeSet(r);
+    let key = k0;
+    for (let n = 2; c.journals[key] && !info.group && !sameKids(codeSet(c.journals[key].r), set); n++) key = k0 + '#' + n;
+    c.journals[key] = { s: s.id, t: t?.id || '', g: info.group || 0, r, at: Date.now() + res.length };
+    recount(c);
+    out = rebuildGroups(c, s);
+  } else if (r.length && !c.journals) {
+    c.students = r.length;
+    c.boys = r.filter(x => x.endsWith('m')).length;
+    c.girls = r.filter(x => x.endsWith('f')).length;
+  }
+  res.push({ file: info.file, cls: c.name, isNew, students: r.length, classCount: c.students, boys: c.boys, girls: c.girls,
+    subj: s?.name, est, planSet, teacher: t?.name, group: info.group, groups: out.groups || 0, shared: out.shared, cid: c.id, sid: s?.id });
 }
 let lastImport = null;
 async function importBuffer(buf, name, res) {
@@ -690,15 +722,23 @@ V.help = () => {
   <p>Журнали → клас → предмет → «Експорт» → Excel. З кожного файлу програма бере назву класу, список учнів (кількість, хлопці/дівчата) і дати уроків. Можна перетягнути одразу багато файлів.</p>
   <p><b>Поставте галочку «Планування»</b> — тоді програма візьме з файлу ще й вчителя та сама призначить його на цей клас. Кількість годин підказується за датами уроків, але її треба звірити з навчальним планом школи (розділ 2).</p>
   <p>Якщо в Мрії з доступом адміністратора є експорт навчального плану або навантаження — принесіть зразок, програму можна навчити читати і його.</p>
-  <p class="muted">Прізвища учнів програма не зберігає — лише кількість учнів, хлопців і дівчат. Усі дані лежать тільки на цьому комп’ютері й нікуди не надсилаються: сторінці заборонено звертатися до мережі.</p>
+  <p class="muted">Прізвища учнів програма не зберігає — лише кількість учнів, хлопців і дівчат та незворотні коди, за якими порівнює списки різних журналів (щоб знайти групи). Усі дані лежать тільки на цьому комп’ютері й нікуди не надсилаються: сторінці заборонено звертатися до мережі.</p>
 </section>`;
 };
 
 V.classes = () => {
   const list = cls();
   const imp = lastImport ? `<div class="notice ${lastImport.some(r => r.err) ? 'warn' : 'ok'}"><header class="form"><b>Імпорт: ${lastImport.filter(r => !r.err).length} з ${lastImport.length} файлів</b><span class="grow"></span><button class="x" data-act="closeImport" title="Закрити">×</button></header><ul>` +
-    lastImport.map(r => r.err ? `<li class="bad">${esc(r.file)} — ${esc(r.err)}</li>` :
-      `<li><b>${esc(r.cls)}</b>${r.isNew ? ' (новий)' : ''}${r.subj ? ', ' + esc(r.subj) : ''} — ${!r.students ? 'учнів не знайдено' : r.countKept ? `у журналі ${r.students} учнів — схоже на групу, у класі лишається ${r.classCount}` : `учнів: ${r.students} (хл. ${r.boys}, дів. ${r.girls})`}${r.est ? `, уроків ~${r.est} на тиждень${r.planSet ? ' → внесено в план, перевірте' : ''}` : ''}${r.teacher ? `, вчитель: ${esc(r.teacher)}${r.group ? ` (група ${r.group})` : ''}${r.assigned ? ' → призначено' : ''}` : ''}${r.split > 1 ? `. <b>Клас поділено на ${r.split} групи</b> — перевірте в навчальному плані` : ''}</li>`).join('') + '</ul></div>' : '';
+    lastImport.map((r, i) => {
+      if (r.err) return `<li class="bad">${esc(r.file)} — ${esc(r.err)}</li>`;
+      /* підсумок про групи — лише в останньому рядку цього класу й предмета, коли всі журнали вже враховано */
+      const lastOfPair = r.sid && !lastImport.slice(i + 1).some(x => x.cid === r.cid && x.sid === r.sid);
+      const c = byId(S.classes, r.cid), s = byId(S.subjects, r.sid);
+      const tail = !lastOfPair || !c || !s ? '' :
+        (r.groups > 1 ? `. <b>${r.groups} групи за списками учнів</b>: ${[...Array(groupsOf(c, s))].map((_, g) => `гр.${g + 1} — ${esc(byId(S.teachers, S.assign[c.id + '|' + s.id + '|' + g])?.name || 'без вчителя')}`).join('; ')}` : '') +
+        (r.shared ? `. <b class="warn">Два вчителі з тими самими учнями</b> (заміна?) — призначено останнього, перевірте` : '');
+      return `<li><b>${esc(r.cls)}</b>${r.isNew ? ' (новий)' : ''}${r.subj ? ', ' + esc(r.subj) : ''} — ${!r.students ? 'учнів не знайдено' : `у журналі ${r.students} учнів` + (r.classCount !== r.students ? `, у класі разом ${r.classCount}` : '')}${r.est ? `, уроків ~${r.est} на тиждень${r.planSet ? ' → внесено в план, перевірте' : ''}` : ''}${r.teacher ? `, вчитель: ${esc(r.teacher)}${r.group ? ` (група ${r.group})` : ''}` : ''}${tail}</li>`;
+    }).join('') + '</ul></div>' : '';
   return `
 <section class="card">
   <header><h2>Класи</h2></header>
@@ -973,6 +1013,7 @@ const ACT = {
   cycleG: el => {
     const k = el.dataset.k, [cid, sid] = k.split('|'), c = byId(S.classes, cid), s = byId(S.subjects, sid);
     const p = S.plan[k] || (S.plan[k] = {});
+    delete p.gi;
     p.g = !p.g ? (autoGroups(c, s) === 1 ? 2 : 1) : p.g >= 3 ? undefined : p.g + 1;
     if (p.g === autoGroups(c, s)) delete p.g;
     const g = groupsOf(c, s);
