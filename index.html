@@ -207,6 +207,7 @@ table.grid{border-collapse:separate;border-spacing:0;background:var(--surface);m
 .okbtn svg.i{width:12px;height:12px;stroke-width:2.6;color:var(--ok)}
 .okbtn:hover{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
 .pdiff{font-size:11.5px;font-weight:600;color:var(--warn);white-space:nowrap}
+.pdiff.ok{color:var(--muted);font-weight:500}
 .pdone{height:20px;display:grid;place-items:center;color:var(--ok)}
 .pdone svg.i{width:14px;height:14px;stroke-width:2.6}
 .howcheck .howto{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
@@ -1081,10 +1082,10 @@ V.plan = () => {
     const differ = set.length > 1 || (set.length === 1 && vals.some(v => !v));
     const lvl = Math.max(0, ...G.map(c => estLevel(c, s))), anyEst = G.some(c => cellOf(c, s)?.est && hoursOf(c, s));
     const detail = differ ? G.map(c => `${esc(c.name.split('-')[1] || c.name)}${hoursOf(c, s) ? fmt(hoursOf(c, s)) : '—'}`).join(' · ') : '';
-    const cl = differ ? ' est2' : lvlCls(lvl);
-    return `<td class="pc"><div class="cell${cl}"${differ ? ' title="Класи паралелі мають різну кількість годин. Впишіть правильне число — воно стане однаковим для всіх класів паралелі."' : ''}>
+    const cl = differ && anyEst ? ' est2' : lvlCls(lvl);
+    return `<td class="pc"><div class="cell${cl}"${differ ? ' title="Класи паралелі мають різну кількість годин. Якщо має бути однаково — впишіть правильне число (запишеться в усі класи). Якщо різниця правильна (напр. профільний клас) — «лишити як є»."' : ''}>
       <input type="number" min="0" max="40" step="0.5" placeholder="${differ ? 'різне' : ' '}" data-par="${g}|${s.id}" value="${!differ && set[0] ? set[0] : ''}" aria-label="${esc(s.name)}, ${g} клас">
-      ${differ ? `<span class="pdiff">${detail}</span>` : anyEst ? `<button class="okbtn" data-act="parOk" data-k="${g}|${s.id}" title="Число правильне — підтвердити для всіх класів паралелі">${ic('check')} так</button>` : set[0] ? `<span class="pdone">${ic('check')}</span>` : '<span class="pdone"></span>'}
+      ${differ ? `<span class="pdiff${anyEst ? '' : ' ok'}">${detail}</span>${anyEst ? `<button class="okbtn" data-act="parOk" data-k="${g}|${s.id}" title="У класах паралелі справді різна кількість годин — залишити як є">${ic('check')} лишити як є</button>` : ''}` : anyEst ? `<button class="okbtn" data-act="parOk" data-k="${g}|${s.id}" title="Число правильне — підтвердити для всіх класів паралелі">${ic('check')} так</button>` : set[0] ? `<span class="pdone">${ic('check')}</span>` : '<span class="pdone"></span>'}
     </div></td>`;
   };
 
@@ -1105,7 +1106,7 @@ ${p0.est ? `<section class="card howcheck">
   <ol class="howto">
     <li><span>Відкрийте навчальний план школи — там години по паралелях (5 клас, 6 клас…).</span></li>
     <li><span>Режим <b>«По паралелях»</b>: одна колонка на паралель замість трьох класів.</span></li>
-    <li><span>Число збігається — <b>«так»</b>. Не збігається — впишіть правильне, воно стане однаковим для всіх класів паралелі.</span></li>
+    <li><span>Число збігається — <b>«так»</b>. Не збігається — впишіть правильне, воно стане однаковим для всіх класів паралелі. <b>«Різне А4 · Б3»</b>: впишіть одне число або, якщо різниця правильна (профільний клас), — <b>«лишити як є»</b>.</span></li>
     <li><span><b>Помаранчеві</b> — спершу: там журнали нерівні або класи паралелі розходяться. Фільтр «Лише перевірити» покаже тільки їх.</span></li>
   </ol>
 </section>` : ''}
