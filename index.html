@@ -1263,7 +1263,7 @@ ${freeH ? `<div class="notice warn noprint">${ic('alert')}<span class="grow"><b>
 V.settings = () => pageHead('Дані і копії', 'Усе зберігається на цьому комп’ютері автоматично. Тут — дані школи, резервні копії та відновлення.') + `
 <div class="cols2">
   <section class="card"><header><h2>Школа</h2></header>
-    <label class="field">Назва школи<input data-f="set.school" value="${esc(S.school)}" placeholder="напр. Ілльницький ЗЗСО"></label>
+    <label class="field">Назва школи<input data-f="set.school" value="${esc(S.school)}" placeholder="напр. Ільницький ЗЗСО І-ІІІ ст."></label>
     <div class="row"><label class="field">Навчальний рік<input data-f="set.year" value="${esc(S.year)}"></label><label class="field">Ставка, год/тиж<input type="number" min="1" data-f="set.stavka" value="${S.stavka}"></label></div>
     <label class="field">Ділити на групи від, учнів<input type="number" min="1" data-f="set.splitMin" value="${S.splitMin}"></label>
     <p class="hint">Поріг діє, коли груп не видно з журналів. Якщо в журналах різні діти — групи визначаються за ними.</p>
