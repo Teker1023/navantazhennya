@@ -389,7 +389,10 @@ async function readMriya(z, fname) {
   if (ss) for (const si of tags(xmlDoc(ss), 'si')) shared.push(tags(si, 't').map(t => t.textContent).join(''));
   const base = fname.replace(/\.xlsx$/i, '').replace(/\s*\(\d+\)\s*$/, '');
   const m = base.match(/^\s*(\d{1,2}\s*[-–—]?\s*[A-Za-zА-ЯҐЄІЇа-яґєії])\s*[,_]\s*(.+?)\s*$/);
-  let cls = m ? normClass(m[1]) : '', subj = m ? m[2] : '';
+  let cls = m ? normClass(m[1]) : '', subj = m ? m[2] : '', group = 0;
+  /* «Англійська мова (група 2)», «Англійська мова, 2 підгрупа», «Інформатика гр. 1» → предмет + номер групи */
+  const gm = subj.match(/\s*[(,\-–]?\s*(?:(?:під)?груп[аи]?|гр\.?)\s*№?\s*(\d)\s*\)?\s*$/i) || subj.match(/\s*[(,\-–]?\s*(\d)\s*[-–]?\s*(?:(?:під)?груп[аи]?|гр\.?)\s*\)?\s*$/i);
+  if (gm) { group = +gm[1]; subj = subj.slice(0, gm.index).trim(); }
   let students = [], teacher = '';
   const dates = new Set();
   for (const sn of z.names.filter(n => /^xl\/worksheets\/[^/]+\.xml$/i.test(n)).sort()) {
@@ -407,7 +410,7 @@ async function readMriya(z, fname) {
       students = rows.slice(hdr + 1).filter(r => /^\d+$/.test(r[0] || '') && /[а-яіїєґ]/i.test(r[nameCol] || '')).map(r => r[nameCol]);
     }
   }
-  return { file: fname, cls, subj, students, teacher, dates: [...dates] };
+  return { file: fname, cls, subj, group, students, teacher, dates: [...dates] };
 }
 function estHours(dates) {
   const y0 = parseInt(S.year, 10) || new Date().getFullYear(), wk = new Map();
@@ -449,7 +452,7 @@ function applyImport(info, res) {
     const k = c.id + '|' + s.id;
     if (est && !S.plan[k]?.h) { S.plan[k] = { ...S.plan[k], h: est, est: true }; planSet = true; }
   }
-  let t = null, assigned = false;
+  let t = null, assigned = false, split = 0;
   if (info.teacher) {
     /* «Рябець Олександр» і «Рябець Олександр Андрійович» — одна людина */
     const words = n => n.toLowerCase().split(/\s+/);
@@ -458,14 +461,23 @@ function applyImport(info, res) {
     if (!t) { t = { id: uid(), name: info.teacher, note: '' }; S.teachers.push(t); }
     else if (info.teacher.length > t.name.length) t.name = info.teacher;
     if (s && hoursOf(c, s)) {
-      const g = groupsOf(c, s), keys = [...Array(g)].map((_, i) => c.id + '|' + s.id + '|' + i);
-      if (!keys.some(k => S.assign[k] === t.id)) {
-        const free = keys.find(k => !byId(S.teachers, S.assign[k]));
+      const base = c.id + '|' + s.id, p = S.plan[base];
+      const setGroups = n => { if (n !== autoGroups(c, s)) p.g = n; else delete p.g; split = n; };
+      const keys = () => [...Array(groupsOf(c, s))].map((_, i) => base + '|' + i);
+      if (info.group) {
+        /* номер групи вказано в назві журналу */
+        if (groupsOf(c, s) < info.group) setGroups(info.group);
+        const k = base + '|' + (info.group - 1);
+        if (S.assign[k] !== t.id) { S.assign[k] = t.id; assigned = true; }
+      } else if (!keys().some(k => S.assign[k] === t.id)) {
+        let free = keys().find(k => !byId(S.teachers, S.assign[k]));
+        /* другий вчитель на тому ж предметі в класі — отже, клас поділено на групи */
+        if (!free && groupsOf(c, s) < 3) { setGroups(groupsOf(c, s) + 1); free = keys().find(k => !byId(S.teachers, S.assign[k])); }
         if (free) { S.assign[free] = t.id; assigned = true; }
       }
     }
   }
-  res.push({ file: info.file, cls: c.name, isNew, students: info.students.length, boys: c.boys, girls: c.girls, subj: s?.name, est, planSet, teacher: t?.name, assigned });
+  res.push({ file: info.file, cls: c.name, isNew, students: info.students.length, boys: c.boys, girls: c.girls, subj: s?.name, est, planSet, teacher: t?.name, assigned, split, group: info.group });
 }
 let lastImport = null;
 async function importBuffer(buf, name, res) {
@@ -670,7 +682,7 @@ V.classes = () => {
   const list = cls();
   const imp = lastImport ? `<div class="notice ${lastImport.some(r => r.err) ? 'warn' : 'ok'}"><header class="form"><b>Імпорт: ${lastImport.filter(r => !r.err).length} з ${lastImport.length} файлів</b><span class="grow"></span><button class="x" data-act="closeImport" title="Закрити">×</button></header><ul>` +
     lastImport.map(r => r.err ? `<li class="bad">${esc(r.file)} — ${esc(r.err)}</li>` :
-      `<li><b>${esc(r.cls)}</b>${r.isNew ? ' (новий)' : ''}${r.subj ? ', ' + esc(r.subj) : ''} — ${r.students ? `учнів: ${r.students} (хл. ${r.boys}, дів. ${r.girls})` : 'учнів не знайдено'}${r.est ? `, уроків ~${r.est} на тиждень${r.planSet ? ' → внесено в план, перевірте' : ''}` : ''}${r.teacher ? `, вчитель: ${esc(r.teacher)}${r.assigned ? ' → призначено' : ''}` : ''}</li>`).join('') + '</ul></div>' : '';
+      `<li><b>${esc(r.cls)}</b>${r.isNew ? ' (новий)' : ''}${r.subj ? ', ' + esc(r.subj) : ''} — ${r.students ? `учнів: ${r.students} (хл. ${r.boys}, дів. ${r.girls})` : 'учнів не знайдено'}${r.est ? `, уроків ~${r.est} на тиждень${r.planSet ? ' → внесено в план, перевірте' : ''}` : ''}${r.teacher ? `, вчитель: ${esc(r.teacher)}${r.group ? ` (група ${r.group})` : ''}${r.assigned ? ' → призначено' : ''}` : ''}${r.split > 1 ? `. <b>Клас поділено на ${r.split} групи</b> — перевірте в навчальному плані` : ''}</li>`).join('') + '</ul></div>' : '';
   return `
 <section class="card">
   <header><h2>Класи</h2></header>
