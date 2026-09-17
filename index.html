@@ -207,6 +207,8 @@ table.grid{border-collapse:separate;border-spacing:0;background:var(--surface);m
 .cell.est2 input,.cell.est2 input:not(:placeholder-shown){border:1.5px dashed var(--warn);background:var(--warn-soft)}
 .cell.est1 input,.cell.est1 input:not(:placeholder-shown){border:1.5px dashed var(--muted);background:var(--raise)}
 .cell.est2 input::placeholder{color:var(--warn);font-size:12.5px;font-weight:600}
+.grid thead .okbtn,.grid .subj .okbtn{margin-top:5px;font-weight:600}
+.grid .subj .okbtn{float:right;margin-left:8px}
 .okbtn{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line2);background:var(--surface);border-radius:99px;font-size:11.5px;font-weight:600;line-height:1;padding:3px 9px 3px 6px;color:var(--ink2)}
 .okbtn svg.i{width:12px;height:12px;stroke-width:2.6;color:var(--ok)}
 .okbtn:hover{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
@@ -487,11 +489,11 @@ const kvDel = key => tx('kv', 'readwrite', st => st.delete(key));
 /* Скасування останньої зміни (кнопка внизу панелі або Ctrl+Z) */
 const UNDO = [];
 let lastState = null, lastPush = 0;
-function save() {
+function save(step) {
   const now = Date.now(), cur = JSON.stringify(S);
   if (lastState && lastState !== cur) {
-    /* зміни, зроблені підряд за кілька секунд (набір числа), вважаємо однією дією */
-    if (now - lastPush > 2500) { UNDO.push(lastState); if (UNDO.length > 40) UNDO.shift(); }
+    /* набір числа підряд — одна дія; масові дії (step) — завжди окремий крок */
+    if (step || now - lastPush > 2500) { UNDO.push(lastState); if (UNDO.length > 40) UNDO.shift(); }
     lastPush = now;
   }
   lastState = cur;
@@ -1225,11 +1227,16 @@ V.plan = () => {
     </div></td>`;
   };
 
+  /* скільки непідтверджених чисел у рядку (предмет) і в колонці (паралель або клас) */
+  const rowEst = s => C.filter(c => cellOf(c, s)?.est && hoursOf(c, s)).length;
+  const colEst = list => subs.reduce((a, s) => a + list.filter(c => cellOf(c, s)?.est && hoursOf(c, s)).length, 0);
+  const okAll = (act, k, n, what) => n ? `<button class="okbtn" data-act="${act}" data-k="${k}" title="Підтвердити всі ${n} ${plural(n, 'число', 'числа', 'чисел')} ${what} одним кліком">${ic('check')} усі ${n}</button>` : '';
+  const subjHead = s => `<th class="subj">${esc(s.name)}${s.split ? `<small>${SPLIT[s.split].toLowerCase()}</small>` : ''}${okAll('rowOk', s.id, rowEst(s), 'цього предмета')}</th>`;
   const grid = planMode === 'grade'
-    ? `<table class="grid"><thead><tr><th class="subj">Предмет</th>${grades.map(g => `<th>${g} клас<small>${inGrade(g).map(c => esc(c.name.split('-')[1] || '')).join(', ')}</small></th>`).join('')}</tr></thead>
-       <tbody>${subs.map(s => `<tr><th class="subj">${esc(s.name)}${s.split ? `<small>${SPLIT[s.split].toLowerCase()}</small>` : ''}</th>${grades.map(g => pcell(g, s)).join('')}</tr>`).join('')}</tbody></table>`
-    : `<table class="grid"><thead><tr><th class="subj">Предмет</th>${C.map(c => `<th>${esc(c.name)}<small>${c.students ?? '?'} уч.</small></th>`).join('')}<th>Разом<small>годин вчителям</small></th></tr></thead>
-       <tbody>${subs.map(s => `<tr><th class="subj">${esc(s.name)}${s.split ? `<small>${SPLIT[s.split].toLowerCase()}</small>` : ''}</th>${C.map(c => cell(c, s)).join('')}<td class="tot" data-rt="${s.id}"></td></tr>`).join('')}</tbody>
+    ? `<table class="grid"><thead><tr><th class="subj">Предмет</th>${grades.map(g => `<th>${g} клас<small>${inGrade(g).map(c => esc(c.name.split('-')[1] || '')).join(', ')}</small>${okAll('colOk', 'g' + g, colEst(inGrade(g)), 'цієї паралелі')}</th>`).join('')}</tr></thead>
+       <tbody>${subs.map(s => `<tr>${subjHead(s)}${grades.map(g => pcell(g, s)).join('')}</tr>`).join('')}</tbody></table>`
+    : `<table class="grid"><thead><tr><th class="subj">Предмет</th>${C.map(c => `<th>${esc(c.name)}<small>${c.students ?? '?'} уч.</small>${okAll('colOk', 'c' + c.id, colEst([c]), 'цього класу')}</th>`).join('')}<th>Разом<small>годин вчителям</small></th></tr></thead>
+       <tbody>${subs.map(s => `<tr>${subjHead(s)}${C.map(c => cell(c, s)).join('')}<td class="tot" data-rt="${s.id}"></td></tr>`).join('')}</tbody>
        <tfoot>
          <tr><th class="subj">Годин у класі</th>${C.map(c => `<td data-ct="${c.id}"></td>`).join('')}<td data-ct="all"></td></tr>
          <tr><th class="subj">Годин вчителям <small>з урахуванням груп</small></th>${C.map(c => `<td data-cg="${c.id}"></td>`).join('')}<td data-cg="all"></td></tr>
@@ -1261,7 +1268,8 @@ ${p0.est ? `<section class="card howcheck">
       : '<b>У клітинці</b> — години на тиждень для одного класу. Наведіть мишу на число: буде видно, з якого журналу воно взялося і скільки уроків було по тижнях.',
     `<b>Годин у класі</b> = сума всіх предметів класу.`,
     `<b>Годин вчителям</b> = години × кількість груп. Клас з двома групами дає вчителям удвічі більше годин: <code>3 год × 2 групи = 6 год</code>.`,
-    '<b>Кружечок зі стрілкою</b> з’являється над клітинкою, тільки якщо ви змінили число вручну. Він повертає те, що було в журналі.')}
+    '<b>Кружечок зі стрілкою</b> з’являється над клітинкою, тільки якщо ви змінили число вручну. Він повертає те, що було в журналі.',
+    '<b>Не тисніть «так» на кожній клітинці:</b> кнопка вгорі підтверджує всі числа одразу, «усі N» у назві предмета — цілий рядок, а «усі N» у заголовку паралелі чи класу — цілу колонку.')}
   <p class="hint">${planMode === 'grade' ? 'Число, вписане для паралелі, записується в усі її класи. Групи налаштовуються в режимі «По класах».' : 'Кнопка під числом — поділ: «весь клас» або «2 групи». Натисніть, щоб змінити вручну. Кожна група дає вчителю повні години предмета.'}</p>
 </section>
 <details class="more"><summary>${ic('plan')} Предмети <small>— назви, порядок, які предмети діляться на групи</small></summary><div class="in">
@@ -1527,11 +1535,22 @@ const ACT = {
   confirmEst: () => {
     let n = 0;
     for (const p of Object.values(S.plan)) if (p.est) { delete p.est; n++; }
-    save(); render(); toast(`Підтверджено: ${n}`);
+    save(true); render(); toast(`Підтверджено: ${n}`);
   },
   planAll: el => { planAll = el.dataset.v === '1'; planWarnOnly = false; render(); },
   planWarn: () => { planWarnOnly = !planWarnOnly; render(); },
   clearTSearch: () => { teacherQ = ''; render(); setTimeout(() => $('#tSearch')?.focus(), 0); },
+  rowOk: el => {
+    let n = 0;
+    for (const c of S.classes) { const p = S.plan[c.id + '|' + el.dataset.k]; if (p?.est && p.h) { delete p.est; n++; } }
+    save(true); keepScroll(render); toast(`Підтверджено: ${n}`);
+  },
+  colOk: el => {
+    const k = el.dataset.k, list = k[0] === 'g' ? S.classes.filter(c => gradeOf(c.name) === +k.slice(1)) : S.classes.filter(c => c.id === k.slice(1));
+    let n = 0;
+    for (const c of list) for (const s of S.subjects) { const p = S.plan[c.id + '|' + s.id]; if (p?.est && p.h) { delete p.est; n++; } }
+    save(true); keepScroll(render); toast(`Підтверджено: ${n}`);
+  },
   parReset: el => {
     const [g, sid] = el.dataset.k.split('|');
     let n = 0;
@@ -1540,13 +1559,13 @@ const ACT = {
       const p = S.plan[c.id + '|' + sid];
       if (p?.imp && p.h !== p.imp) { p.h = p.imp; delete p.est; n++; }
     }
-    save(); keepScroll(render); toast(n ? `Повернуто з журналу: ${n}` : 'Нічого повертати');
+    save(true); keepScroll(render); toast(n ? `Повернуто з журналу: ${n}` : 'Нічого повертати');
   },
   cellReset: el => {
     const p = S.plan[el.dataset.k];
     if (!p?.imp) return;
     p.h = p.imp; delete p.est;
-    save(); keepScroll(render); toast('Повернуто число з журналу');
+    save(true); keepScroll(render); toast('Повернуто число з журналу');
   },
   undo: () => {
     const prev = UNDO.pop();
@@ -1558,7 +1577,7 @@ const ACT = {
   parOk: el => {
     const [g, sid] = el.dataset.k.split('|'), s = byId(S.subjects, sid);
     for (const c of S.classes) if (gradeOf(c.name) === +g && S.plan[c.id + '|' + sid]) delete S.plan[c.id + '|' + sid].est;
-    save(); keepScroll(render); toast(`${g} клас, ${s.name}: підтверджено`);
+    save(true); keepScroll(render); toast(`${g} клас, ${s.name}: підтверджено`);
   },
   distOnly: el => { dist.only = el.dataset.v === '1'; render(); },
   addClass: () => {
@@ -1572,7 +1591,7 @@ const ACT = {
     const names = $('#bulkClasses').value.split(/[,;\n]+/).map(normClass).filter(Boolean);
     let k = 0;
     for (const name of names) if (!S.classes.some(c => c.name === name)) { S.classes.push({ id: uid(), name, students: null, src: 'вручну' }); k++; }
-    save(); render(); toast('Додано класів: ' + k);
+    save(true); render(); toast('Додано класів: ' + k);
   },
   delClass: el => {
     const c = byId(S.classes, el.dataset.id);
@@ -1581,7 +1600,7 @@ const ACT = {
     for (const m of [S.plan, S.assign]) for (const k in m) if (k.startsWith(c.id + '|')) delete m[k];
     delete S.homeroom[c.id]; delete S.homeroom[c.id + ':pct'];
     S.pays = S.pays.filter(p => p.classId !== c.id);
-    save(); render();
+    save(true); render();
   },
   cycleG: el => {
     const k = el.dataset.k, [cid, sid] = k.split('|'), c = byId(S.classes, cid), s = byId(S.subjects, sid);
@@ -1604,7 +1623,7 @@ const ACT = {
       if (src?.h) S.plan[k] = { ...S.plan[k], h: src.h }; else if (S.plan[k]) { delete S.plan[k].h; delete S.plan[k].est; }
       if (S.plan[k]) delete S.plan[k].est;
     }
-    save(); render(); toast('Скопійовано');
+    save(true); render(); toast('Скопійовано');
   },
   addSubj: () => {
     const name = $('#newSubj').value.trim();
@@ -1623,13 +1642,13 @@ const ACT = {
     if (!confirm(`Видалити предмет «${s.name}» з планом і розподілом?`)) return;
     S.subjects = S.subjects.filter(x => x !== s);
     for (const m of [S.plan, S.assign]) for (const k in m) if (k.split('|')[1] === s.id) delete m[k];
-    save(); render();
+    save(true); render();
   },
   addTeachers: () => {
     const names = $('#newTeachers').value.split('\n').map(x => x.replace(/^\s*\d+[.)]\s*/, '').replace(/\s+/g, ' ').trim()).filter(Boolean);
     let k = 0;
     for (const name of names) if (!S.teachers.some(t => t.name === name)) { S.teachers.push({ id: uid(), name, note: '' }); k++; }
-    save(); render(); toast('Додано вчителів: ' + k);
+    save(true); render(); toast('Додано вчителів: ' + k);
   },
   delTeacher: el => {
     const t = byId(S.teachers, el.dataset.id);
@@ -1640,7 +1659,7 @@ const ACT = {
     S.extras = S.extras.filter(e => e.teacherId !== t.id);
     S.pays = S.pays.filter(x => x.teacherId !== t.id);
     for (const k in S.homeroom) if (S.homeroom[k] === t.id) delete S.homeroom[k];
-    save(); render();
+    save(true); render();
   },
   addExtra: () => {
     const teacherId = $('#exT').value, title = $('#exTitle').value.trim(), h = parseFloat(($('#exH').value || '').replace(',', '.'));
@@ -1676,7 +1695,7 @@ const ACT = {
         n++;
       }
     }
-    save(); render(); toast(n ? `Додано доплат: ${n} — перевірте розміри` : 'Нових доплат за перевірку робіт нема');
+    save(true); render(); toast(n ? `Додано доплат: ${n} — перевірте розміри` : 'Нових доплат за перевірку робіт нема');
   },
   bulkAll: () => {
     const bs = byId(S.subjects, bulk.s), ids = cls().filter(c => hoursOf(c, bs)).map(c => c.id);
@@ -1693,7 +1712,7 @@ const ACT = {
       if ((bulk.grp === '0' || bulk.grp === '1') && u.i !== +bulk.grp) continue;
       S.assign[u.key] = bulk.t; k++;
     }
-    bulk.cls.clear(); save(); render(); toast(k ? 'Призначено: ' + k : 'Нічого не змінено — перевірте вибір груп');
+    bulk.cls.clear(); save(true); render(); toast(k ? 'Призначено: ' + k : 'Нічого не змінено — перевірте вибір груп');
   },
   exportXlsx,
   print: () => print(),
