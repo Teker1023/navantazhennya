@@ -390,7 +390,7 @@ async function readMriya(z, fname) {
   const base = fname.replace(/\.xlsx$/i, '').replace(/\s*\(\d+\)\s*$/, '');
   const m = base.match(/^\s*(\d{1,2}\s*[-–—]?\s*[A-Za-zА-ЯҐЄІЇа-яґєії])\s*[,_]\s*(.+?)\s*$/);
   let cls = m ? normClass(m[1]) : '', subj = m ? m[2] : '';
-  let students = [];
+  let students = [], teacher = '';
   const dates = new Set();
   for (const sn of z.names.filter(n => /^xl\/worksheets\/[^/]+\.xml$/i.test(n)).sort()) {
     const rows = sheetRows(await z.text(sn), shared);
@@ -399,22 +399,27 @@ async function readMriya(z, fname) {
       const d = (v || '').match(/^(\d{1,2})\s*[\/.]\s*(\d{1,2})$/);
       if (d && +d[2] >= 1 && +d[2] <= 12 && +d[1] >= 1 && +d[1] <= 31) dates.add(+d[1] + '/' + +d[2]);
       if (!cls) { const k = (v || '').match(/(\d{1,2}\s*-\s*[А-ЯҐЄІЇ])\s*клас/i); if (k) cls = normClass(k[1]); }
+      /* аркуш «Планування»: «Вчитель Прізвище Ім'я По батькові» */
+      if (!teacher) { const t = (v || '').match(/^вчител(?:ь|ька)[:\s]+([А-ЯҐЄІЇ][^\d]{3,})$/i); if (t) teacher = t[1].replace(/\s+/g, ' ').trim(); }
     }
     if (hdr >= 0 && !students.length) {
       const nameCol = rows[hdr].findIndex(v => /прізвище/i.test(v || ''));
       students = rows.slice(hdr + 1).filter(r => /^\d+$/.test(r[0] || '') && /[а-яіїєґ]/i.test(r[nameCol] || '')).map(r => r[nameCol]);
     }
   }
-  return { file: fname, cls, subj, students, dates: [...dates] };
+  return { file: fname, cls, subj, students, teacher, dates: [...dates] };
 }
 function estHours(dates) {
   const y0 = parseInt(S.year, 10) || new Date().getFullYear(), wk = new Map();
-  for (const x of dates) {
-    const [dd, mm] = x.split('/').map(Number);
-    const dt = new Date(mm >= 8 ? y0 : y0 + 1, mm - 1, dd);
+  /* уроки, заплановані на майбутні тижні, часто ще не повні — рахуємо лише до поточного тижня */
+  const now = new Date(); now.setHours(0, 0, 0, 0); now.setDate(now.getDate() - (now.getDay() + 6) % 7);
+  const weeks = dates.map(x => {
+    const [dd, mm] = x.split('/').map(Number), dt = new Date(mm >= 8 ? y0 : y0 + 1, mm - 1, dd);
     dt.setDate(dt.getDate() - (dt.getDay() + 6) % 7);
-    const k = dt.toDateString(); wk.set(k, (wk.get(k) || 0) + 1);
-  }
+    return dt;
+  });
+  const past = weeks.filter(dt => dt <= now);
+  for (const dt of past.length ? past : weeks) { const k = dt.toDateString(); wk.set(k, (wk.get(k) || 0) + 1); }
   if (!wk.size) return null;
   const freq = {};
   for (const c of wk.values()) freq[c] = (freq[c] || 0) + 1;
@@ -444,7 +449,23 @@ function applyImport(info, res) {
     const k = c.id + '|' + s.id;
     if (est && !S.plan[k]?.h) { S.plan[k] = { ...S.plan[k], h: est, est: true }; planSet = true; }
   }
-  res.push({ file: info.file, cls: c.name, isNew, students: info.students.length, boys: c.boys, girls: c.girls, subj: s?.name, est, planSet });
+  let t = null, assigned = false;
+  if (info.teacher) {
+    /* «Рябець Олександр» і «Рябець Олександр Андрійович» — одна людина */
+    const words = n => n.toLowerCase().split(/\s+/);
+    const same = (a, b) => { const x = words(a), y = words(b), n = Math.min(x.length, y.length, 2); return n >= 2 && x.slice(0, n).join(' ') === y.slice(0, n).join(' '); };
+    t = S.teachers.find(x => same(x.name, info.teacher));
+    if (!t) { t = { id: uid(), name: info.teacher, note: '' }; S.teachers.push(t); }
+    else if (info.teacher.length > t.name.length) t.name = info.teacher;
+    if (s && hoursOf(c, s)) {
+      const g = groupsOf(c, s), keys = [...Array(g)].map((_, i) => c.id + '|' + s.id + '|' + i);
+      if (!keys.some(k => S.assign[k] === t.id)) {
+        const free = keys.find(k => !byId(S.teachers, S.assign[k]));
+        if (free) { S.assign[free] = t.id; assigned = true; }
+      }
+    }
+  }
+  res.push({ file: info.file, cls: c.name, isNew, students: info.students.length, boys: c.boys, girls: c.girls, subj: s?.name, est, planSet, teacher: t?.name, assigned });
 }
 let lastImport = null;
 async function importBuffer(buf, name, res) {
@@ -639,7 +660,8 @@ V.help = () => {
 <section class="card notice">
   <h3>Що вивантажити з Мрії</h3>
   <p>Журнали → клас → предмет → «Експорт» → Excel. З кожного файлу програма бере назву класу, список учнів (кількість, хлопці/дівчата) і дати уроків. Можна перетягнути одразу багато файлів.</p>
-  <p>Годин навчального плану і вчителів у такому файлі нема — їх вносять у розділах 2 і 3. Якщо в Мрії з доступом адміністратора є експорт навчального плану або розкладу — принесіть зразок, програму можна навчити читати і його.</p>
+  <p><b>Поставте галочку «Планування»</b> — тоді програма візьме з файлу ще й вчителя та сама призначить його на цей клас. Кількість годин підказується за датами уроків, але її треба звірити з навчальним планом школи (розділ 2).</p>
+  <p>Якщо в Мрії з доступом адміністратора є експорт навчального плану або навантаження — принесіть зразок, програму можна навчити читати і його.</p>
   <p class="muted">Прізвища учнів програма не зберігає — лише кількість учнів, хлопців і дівчат. Усі дані лежать тільки на цьому комп’ютері й нікуди не надсилаються: сторінці заборонено звертатися до мережі.</p>
 </section>`;
 };
@@ -648,11 +670,11 @@ V.classes = () => {
   const list = cls();
   const imp = lastImport ? `<div class="notice ${lastImport.some(r => r.err) ? 'warn' : 'ok'}"><header class="form"><b>Імпорт: ${lastImport.filter(r => !r.err).length} з ${lastImport.length} файлів</b><span class="grow"></span><button class="x" data-act="closeImport" title="Закрити">×</button></header><ul>` +
     lastImport.map(r => r.err ? `<li class="bad">${esc(r.file)} — ${esc(r.err)}</li>` :
-      `<li><b>${esc(r.cls)}</b>${r.isNew ? ' (новий)' : ''}${r.subj ? ', ' + esc(r.subj) : ''} — ${r.students ? `учнів: ${r.students} (хл. ${r.boys}, дів. ${r.girls})` : 'учнів не знайдено'}${r.est ? `, уроків ~${r.est} на тиждень${r.planSet ? ' → внесено в план, перевірте' : ''}` : ''}</li>`).join('') + '</ul></div>' : '';
+      `<li><b>${esc(r.cls)}</b>${r.isNew ? ' (новий)' : ''}${r.subj ? ', ' + esc(r.subj) : ''} — ${r.students ? `учнів: ${r.students} (хл. ${r.boys}, дів. ${r.girls})` : 'учнів не знайдено'}${r.est ? `, уроків ~${r.est} на тиждень${r.planSet ? ' → внесено в план, перевірте' : ''}` : ''}${r.teacher ? `, вчитель: ${esc(r.teacher)}${r.assigned ? ' → призначено' : ''}` : ''}</li>`).join('') + '</ul></div>' : '';
   return `
 <section class="card">
   <header><h2>Класи</h2></header>
-  <div class="drop" data-act="pickXlsx" role="button" tabindex="0"><b>Перетягніть сюди файли Excel з Мрії</b><span>або натисніть, щоб вибрати. Журнали → клас → предмет → Експорт.</span></div>
+  <div class="drop" data-act="pickXlsx" role="button" tabindex="0"><b>Перетягніть сюди файли Excel з Мрії</b><span>або натисніть, щоб вибрати. Журнали → клас → предмет → Експорт (з галочкою «Планування» — тоді підтягнеться й вчитель).</span></div>
   ${imp}
   <div class="form">
     <label>Клас<input id="newClass" class="w6" placeholder="5-А"></label>
