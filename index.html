@@ -800,10 +800,12 @@ function applyImport(info, res) {
     const ei = estInfo(info.dates);
     est = ei?.h ?? null;
     const k = c.id + '|' + s.id;
-    if (est && !S.plan[k]?.h) {
-      /* imp — що саме сказав журнал; за ним працює кнопка «повернути» */
-      S.plan[k] = { ...S.plan[k], h: est, est: ei.stable ? 1 : 2, imp: est, w: ei.weeks };
-      planSet = true;
+    if (est) {
+      /* imp і w — що саме сказав журнал; за ними працює підказка і кнопка «повернути».
+         Записуємо завжди, а самі години — лише якщо клітинка ще порожня. */
+      const cur = S.plan[k] || {};
+      S.plan[k] = { ...cur, imp: est, w: ei.weeks };
+      if (!cur.h) { S.plan[k].h = est; S.plan[k].est = ei.stable ? 1 : 2; planSet = true; }
     }
   }
   if (info.teacher) {
