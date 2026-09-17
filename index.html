@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Заборона будь-яких мережевих запитів зі сторінки: дані не можуть бути нікуди відправлені -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
+<meta name="theme-color" content="#2155C9">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>Навантаження школи</title>
+<style>
+:root{
+  --bg:#F1F3F7; --surface:#FFFFFF; --raise:#F7F8FB; --ink:#161B26; --muted:#5E6677; --line:#DADFE8;
+  --accent:#2155C9; --accent-ink:#FFFFFF; --accent-soft:#E2EAFB;
+  --ok:#11764E; --ok-soft:#DDF1E7; --warn:#9A5B00; --warn-soft:#FBEFD9; --bad:#BF3326; --bad-soft:#FBE3E0;
+  --display:"Bahnschrift SemiCondensed","Bahnschrift","Segoe UI",system-ui,sans-serif;
+  --body:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F131A; --surface:#171C25; --raise:#1D2330; --ink:#E5E9F0; --muted:#98A1B3; --line:#2B3342;
+    --accent:#7FA6F5; --accent-ink:#0B1221; --accent-soft:#1D2A45;
+    --ok:#5CCB98; --ok-soft:#15302A; --warn:#EDAA45; --warn-soft:#33270F; --bad:#FF7B6E; --bad-soft:#3A1E1B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F131A; --surface:#171C25; --raise:#1D2330; --ink:#E5E9F0; --muted:#98A1B3; --line:#2B3342;
+  --accent:#7FA6F5; --accent-ink:#0B1221; --accent-soft:#1D2A45;
+  --ok:#5CCB98; --ok-soft:#15302A; --warn:#EDAA45; --warn-soft:#33270F; --bad:#FF7B6E; --bad-soft:#3A1E1B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--body)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+[hidden]{display:none!important}
+h1,h2,h3{font-family:var(--display);font-weight:600;margin:0}
+h2{font-size:22px}
+h3{font-size:17px}
+p{margin:0}
+.muted{color:var(--muted)}
+.ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+
+.top{position:sticky;top:0;z-index:30;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .in{max-width:1400px;margin:0 auto;padding:10px 16px 0;display:flex;flex-direction:column;gap:8px}
+.brand{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand h1{font-size:22px}
+.brand #schoolLbl{color:var(--muted)}
+#saveState{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px}
+#tabs{display:flex;gap:2px;overflow-x:auto}
+#tabs button{border:0;background:none;padding:9px 12px 11px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+#tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+#tabs button b{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:99px;background:var(--bad);color:#fff;font-size:11px;line-height:18px}
+
+main{max-width:1400px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card > header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card > header .sp{flex:1}
+
+.btn{min-height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-weight:600;white-space:nowrap}
+.btn:hover{background:var(--raise)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--bad)}
+.btn.small{min-height:30px;padding:0 10px;font-size:13px}
+.btn.warn{background:var(--warn-soft);border-color:var(--warn-soft);color:var(--warn)}
+.x{border:0;background:none;color:var(--muted);font-size:18px;line-height:1;padding:4px 8px;border-radius:6px}
+.x:hover{background:var(--bad-soft);color:var(--bad)}
+
+input[type=text],input[type=number],input:not([type]),select,textarea{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px 8px;min-height:34px}
+textarea{width:100%;min-height:110px;resize:vertical}
+input[type=number]{font-variant-numeric:tabular-nums}
+.form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.form label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600}
+.form label input,.form label select{color:var(--ink);font-weight:400;font-size:14px}
+.w4{width:70px}.w6{width:90px}.w12{width:180px}.w20{width:300px}.grow{flex:1 1 220px}
+
+.tblwrap{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:calc(100vh - 230px)}
+table.tbl{border-collapse:collapse;width:100%;background:var(--surface)}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:middle}
+.tbl thead th{position:sticky;top:0;z-index:2;background:var(--raise);font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+.tbl td.num,.tbl th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl input{min-height:30px;padding:3px 7px}
+.tbl tr.unassigned td{background:var(--warn-soft)}
+.tbl tbody tr.teacher-first td{border-top:2px solid var(--line)}
+
+/* grid of plan */
+.grid th,.grid td{border-right:1px solid var(--line);padding:3px 4px;text-align:center}
+.grid thead th{padding:6px 4px}
+.grid thead th small,.grid .subj small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.grid .subj{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;min-width:210px;padding:4px 10px;font-weight:600}
+.grid thead th.subj{z-index:3;background:var(--raise)}
+.grid td.pc{min-width:76px;white-space:nowrap}
+.grid td.pc input{width:46px;text-align:center;border-color:transparent;background:var(--raise)}
+.grid td.pc input:hover{border-color:var(--line)}
+.grid td.est input{border:1.5px dashed var(--warn);background:var(--warn-soft)}
+.grid .grp{margin-left:2px;border:1px solid var(--line);background:none;border-radius:6px;font-size:11px;padding:1px 4px;color:var(--muted)}
+.grid .grp.on{background:var(--accent-soft);border-color:var(--accent-soft);color:var(--accent);font-weight:700}
+.grid .grp.man{border-style:solid;border-color:var(--accent)}
+.grid tfoot td,.grid tfoot th{position:sticky;bottom:0;background:var(--raise);font-weight:700;font-variant-numeric:tabular-nums}
+.grid tfoot tr:first-child td,.grid tfoot tr:first-child th{bottom:29px}
+.grid td.tot{font-weight:700;font-variant-numeric:tabular-nums}
+
+.drop{border:2px dashed var(--line);border-radius:12px;padding:22px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;background:var(--raise);cursor:pointer}
+.drop b{font-size:16px}
+.drop span{color:var(--muted)}
+body.dragging .drop{border-color:var(--accent);background:var(--accent-soft)}
+body.dragging::after{content:"Відпустіть файли, щоб імпортувати";position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:rgba(33,85,201,.18);font:600 26px var(--display);color:var(--accent);pointer-events:none}
+
+.notice{border-radius:10px;padding:10px 14px;background:var(--accent-soft)}
+.notice.warn{background:var(--warn-soft)}
+.notice.ok{background:var(--ok-soft)}
+.notice ul{margin:6px 0 0;padding-left:20px}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile span{font-size:12px;color:var(--muted);font-weight:600}
+.tile b{display:block;font:600 30px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:99px;background:var(--raise);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--ok)}
+
+.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px}
+.steps li b{font-family:var(--display);font-size:16px}
+.chk{display:grid;grid-template-columns:auto 1fr auto;gap:8px 12px;align-items:center}
+.pill{font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--raise);color:var(--muted);white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:99px;padding:3px 10px;cursor:pointer}
+.chips label:has(input:checked){background:var(--accent-soft);border-color:var(--accent)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px;align-items:start}
+
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;font-weight:600;z-index:100;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.show{opacity:1}
+
+@media print{
+  body{background:#fff;color:#000}
+  .top,.noprint,#toast{display:none!important}
+  main{padding:0;max-width:none}
+  .card{border:0;padding:0}
+  .tblwrap{max-height:none;overflow:visible;border:0}
+  .tbl thead th{position:static}
+  .tbl th,.tbl td{border:1px solid #999;padding:3px 6px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="in">
+    <div class="brand"><h1>Навантаження</h1><span id="schoolLbl"></span><div id="saveState"></div></div>
+    <nav id="tabs"></nav>
+  </div>
+</header>
+<main id="view"></main>
+<div id="toast" role="status"></div>
+<input type="file" id="fileXlsx" multiple accept=".xlsx,.zip" hidden>
+<input type="file" id="fileJson" accept=".json" hidden>
+
+<script>
+'use strict';
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const byId = (arr, id) => arr.find(x => x.id === id);
+const fmt = n => String(Math.round((+n || 0) * 100) / 100).replace('.', ',');
+const fmtZ = n => n ? fmt(n) : '';
+const hm = t => new Date(t).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+const today = () => new Date().toISOString().slice(0, 10);
+
+/* окремі ключі — не перетинаються з журналом ФК */
+const LS = 'shkola-navantazhennya-v1';
+
+/* split: 0 — без поділу, 1 — ділиться при наповнюваності ≥ порогу, 2 — ділиться лише в 10–11 класах */
+const SUBJECTS = [
+  ['Українська мова', 0], ['Українська література', 0], ['Зарубіжна література', 0],
+  ['Англійська мова', 1], ['Друга іноземна мова', 1],
+  ['Математика', 0], ['Алгебра', 0], ['Геометрія', 0],
+  ['Історія України', 0], ['Всесвітня історія', 0], ['Громадянська освіта', 0], ['Географія', 0],
+  ['Пізнаємо природу', 0], ['Біологія', 0], ['Фізика', 0], ['Хімія', 0],
+  ['Інформатика', 1], ['Технології', 1], ['Мистецтво', 0],
+  ['Здоров’я, безпека та добробут', 0], ['Фізична культура', 2], ['Захист України', 0]
+];
+const SPLIT = ['Без поділу', 'Ділиться (≥ поріг учнів)', 'Ділиться лише в 10–11 кл.'];
+
+function guessYear() { const d = new Date(), y = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1; return y + '/' + (y + 1); }
+function blank() {
+  return { v: 1, school: '', year: guessYear(), stavka: 18, splitMin: 27, classes: [],
+    subjects: SUBJECTS.map(([name, split]) => ({ id: uid(), name, split })),
+    teachers: [], plan: {}, assign: {}, extras: [], updated: 0 };
+}
+function valid(d) { return d && d.v === 1 && Array.isArray(d.classes) && Array.isArray(d.subjects) && Array.isArray(d.teachers); }
+
+let S = blank();
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ---------- база даних (IndexedDB) + автоматичні копії ---------- */
+const DB_NAME = 'navantazhennya-db', KEEP_SNAPS = 60;
+let dbp, saveT, savedAt = 0, saveErr = '';
+function db() {
+  return dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore('kv'); r.result.createObjectStore('snaps', { keyPath: 'id', autoIncrement: true }); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+}
+async function tx(store, mode, fn) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction(store, mode), r = fn(t.objectStore(store));
+    t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
+const kvGet = key => tx('kv', 'readonly', st => st.get(key));
+const kvPut = (key, val) => tx('kv', 'readwrite', st => st.put(val, key));
+const kvDel = key => tx('kv', 'readwrite', st => st.delete(key));
+
+function save() {
+  S.updated = Date.now();
+  clearTimeout(saveT); saveT = setTimeout(flush, 300);
+}
+async function flush() {
+  clearTimeout(saveT);
+  try { await kvPut('data', S); savedAt = Date.now(); saveErr = ''; }
+  catch (e) { saveErr = 'Не вдалося зберегти!'; }
+  showSave(); folderSave();
+}
+const summary = d => `${d.classes.length} кл., ${d.teachers.length} вчит., ${Object.keys(d.assign).length} призначень`;
+async function snapshot(reason) {
+  if (!S.classes.length && !S.teachers.length) return;
+  await tx('snaps', 'readwrite', st => st.add({ at: Date.now(), reason, info: summary(S), data: JSON.parse(JSON.stringify(S)) }));
+  const all = await listSnaps();
+  if (all.length > KEEP_SNAPS) await tx('snaps', 'readwrite', st => all.slice(KEEP_SNAPS).forEach(s => st.delete(s.id)));
+}
+async function listSnaps() {
+  const all = await tx('snaps', 'readonly', st => st.getAll());
+  return all.sort((a, b) => b.at - a.at);
+}
+
+/* копії в папку на диску (Chrome / Edge) */
+const canDir = 'showDirectoryPicker' in window;
+let DIR = null, dirOk = false, dirAt = 0, dirT;
+function folderSave() { clearTimeout(dirT); dirT = setTimeout(writeFolder, 2000); }
+async function writeFolder() {
+  if (!DIR || !dirOk || (!S.classes.length && !S.teachers.length)) return;
+  try {
+    const put = async (dir, name) => { const w = await (await dir.getFileHandle(name, { create: true })).createWritable(); await w.write(JSON.stringify(S, null, 1)); await w.close(); };
+    await put(DIR, 'Навантаження — поточні дані.json');
+    const sub = await DIR.getDirectoryHandle('Копії по днях', { create: true });
+    await put(sub, `Навантаження ${today()}.json`);
+    dirAt = Date.now();
+  } catch (e) { dirOk = false; }
+  showSave();
+}
+function showSave() {
+  const el = $('#saveState'); if (!el) return;
+  let h = saveErr ? `<span class="bad">● ${saveErr}</span>` : `<span class="ok">● Збережено${savedAt ? ' о ' + hm(savedAt) : ''}</span>`;
+  if (DIR && dirOk) h += ` <span class="muted">· копія в папці «${esc(DIR.name)}»${dirAt ? ' о ' + hm(dirAt) : ''}</span>`;
+  else if (DIR) h += ` <button class="btn small warn" data-act="reconnectDir">Дозволити копії в папку «${esc(DIR.name)}»</button>`;
+  el.innerHTML = h;
+}
+async function takeData(d, from) {
+  if (!valid(d)) { toast('Це не файл програми «Навантаження»'); return false; }
+  await snapshot('перед відновленням');
+  S = d; await flush();
+  toast('Відновлено: ' + from); return true;
+}
+
+/* ---------- класи, предмети, години ---------- */
+const LAT = { A: 'А', B: 'В', C: 'С', E: 'Е', H: 'Н', I: 'І', K: 'К', M: 'М', O: 'О', P: 'Р', T: 'Т', X: 'Х' };
+function normClass(v) {
+  let s = String(v || '').trim().toUpperCase().replace(/\s+/g, '').replace(/[ABCEHIKMOPTX]/g, c => LAT[c]);
+  const m = s.match(/^(\d{1,2})[-–—.]?([А-ЯҐЄІЇ])(?:КЛАС|КЛ\.?)?$/);
+  return m ? m[1] + '-' + m[2] : s.replace(/КЛАС$/, '');
+}
+const gradeOf = n => parseInt(n, 10) || 0;
+const cls = () => [...S.classes].sort((a, b) => gradeOf(a.name) - gradeOf(b.name) || a.name.localeCompare(b.name, 'uk'));
+const teachersSorted = () => [...S.teachers].sort((a, b) => a.name.localeCompare(b.name, 'uk'));
+const cellOf = (c, s) => S.plan[c.id + '|' + s.id];
+const hoursOf = (c, s) => +(cellOf(c, s)?.h) || 0;
+function autoGroups(c, s) {
+  if (!s.split || (s.split === 2 && gradeOf(c.name) < 10)) return 1;
+  return (c.students || 0) >= S.splitMin ? 2 : 1;
+}
+const groupsOf = (c, s) => cellOf(c, s)?.g || autoGroups(c, s);
+
+/* одиниця навантаження = клас × предмет × група */
+function units() {
+  const out = [];
+  for (const c of cls()) for (const s of S.subjects) {
+    const h = hoursOf(c, s); if (!h) continue;
+    const g = groupsOf(c, s);
+    for (let i = 0; i < g; i++) {
+      const key = c.id + '|' + s.id + '|' + i, t = S.assign[key];
+      out.push({ c, s, i, g, h, key, t: byId(S.teachers, t) ? t : '' });
+    }
+  }
+  return out;
+}
+function loads() {
+  const m = new Map(teachersSorted().map(t => [t.id, { t, rows: [], extra: [], total: 0 }]));
+  for (const u of units()) { const L = m.get(u.t); if (L) { L.rows.push(u); L.total += u.h; } }
+  for (const e of S.extras) { const L = m.get(e.teacherId); if (L) { L.extra.push(e); L.total += +e.h || 0; } }
+  return [...m.values()];
+}
+function bySubject(L) {
+  const m = new Map();
+  for (const u of L.rows) {
+    if (!m.has(u.s.id)) m.set(u.s.id, { s: u.s, parts: [], h: 0 });
+    const x = m.get(u.s.id);
+    x.parts.push({ u, label: u.c.name + (u.g > 1 ? ' гр.' + (u.i + 1) : '') });
+    x.h += u.h;
+  }
+  return [...m.values()];
+}
+function status(total) {
+  const st = S.stavka;
+  if (!total) return ['без годин', ''];
+  if (total < st) return ['менше ставки', 'warn'];
+  if (total === st) return ['ставка', 'ok'];
+  return ['понад ставку', 'bad'];
+}
+function guessSplit(name) {
+  if (/англ|німец|франц|іспан|польськ|іноземн|інформат|технолог|трудов/i.test(name)) return 1;
+  if (/фізичн.*культ/i.test(name)) return 2;
+  return 0;
+}
+const normSubj = s => String(s).toLowerCase().replace(/[’'`ʼ]/g, '').replace(/\s+/g, ' ').trim();
+function findSubject(name) {
+  const n = normSubj(name);
+  return S.subjects.find(s => normSubj(s.name) === n) || S.subjects.find(s => { const x = normSubj(s.name); return x.includes(n) || n.includes(x); });
+}
+
+/* ---------- читання .xlsx з Мрії (без інтернету) ---------- */
+function unzip(buf) {
+  const dv = new DataView(buf), u8 = new Uint8Array(buf), td = new TextDecoder();
+  let e = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('файл пошкоджений або це не .xlsx');
+  const n = dv.getUint16(e + 10, true), files = {};
+  let p = dv.getUint32(e + 16, true);
+  for (let k = 0; k < n; k++) {
+    const method = dv.getUint16(p + 10, true), size = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const name = td.decode(u8.subarray(p + 46, p + 46 + nl));
+    const start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
+    files[name] = { method, data: u8.subarray(start, start + size) };
+    p += 46 + nl + xl + cl;
+  }
+  const raw = async name => {
+    const f = files[name]; if (!f) return null;
+    if (f.method === 0) return f.data.slice().buffer;
+    if (typeof DecompressionStream === 'undefined') throw new Error('оновіть браузер (Chrome або Edge)');
+    return new Response(new Blob([f.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
+  };
+  return { names: Object.keys(files), has: n => n in files, bytes: raw, text: async n => { const b = await raw(n); return b ? td.decode(b) : null; } };
+}
+const xmlDoc = s => new DOMParser().parseFromString(s, 'application/xml');
+const tags = (el, t) => [...el.getElementsByTagNameNS('*', t)];
+function colIdx(letters) { let n = 0; for (const ch of letters) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; }
+function sheetRows(xml, shared) {
+  const rows = [];
+  for (const r of tags(xmlDoc(xml), 'row')) {
+    const arr = [];
+    for (const c of tags(r, 'c')) {
+      const col = colIdx((c.getAttribute('r') || '').replace(/\d+/g, '')) ;
+      const vEl = tags(c, 'v')[0];
+      const v = c.getAttribute('t') === 's' ? shared[+(vEl?.textContent)] || '' : tags(c, 't').map(x => x.textContent).join('') || vEl?.textContent || '';
+      arr[col >= 0 ? col : arr.length] = v.trim();
+    }
+    rows.push(arr);
+  }
+  return rows;
+}
+async function readMriya(z, fname) {
+  const shared = [], ss = await z.text('xl/sharedStrings.xml');
+  if (ss) for (const si of tags(xmlDoc(ss), 'si')) shared.push(tags(si, 't').map(t => t.textContent).join(''));
+  const base = fname.replace(/\.xlsx$/i, '').replace(/\s*\(\d+\)\s*$/, '');
+  const m = base.match(/^\s*(\d{1,2}\s*[-–—]?\s*[A-Za-zА-ЯҐЄІЇа-яґєії])\s*[,_]\s*(.+?)\s*$/);
+  let cls = m ? normClass(m[1]) : '', subj = m ? m[2] : '';
+  let students = [];
+  const dates = new Set();
+  for (const sn of z.names.filter(n => /^xl\/worksheets\/[^/]+\.xml$/i.test(n)).sort()) {
+    const rows = sheetRows(await z.text(sn), shared);
+    const hdr = rows.findIndex(r => r.some(v => /прізвище/i.test(v || '')));
+    for (const r of rows) for (const v of r) {
+      const d = (v || '').match(/^(\d{1,2})\s*[\/.]\s*(\d{1,2})$/);
+      if (d && +d[2] >= 1 && +d[2] <= 12 && +d[1] >= 1 && +d[1] <= 31) dates.add(+d[1] + '/' + +d[2]);
+      if (!cls) { const k = (v || '').match(/(\d{1,2}\s*-\s*[А-ЯҐЄІЇ])\s*клас/i); if (k) cls = normClass(k[1]); }
+    }
+    if (hdr >= 0 && !students.length) {
+      const nameCol = rows[hdr].findIndex(v => /прізвище/i.test(v || ''));
+      students = rows.slice(hdr + 1).filter(r => /^\d+$/.test(r[0] || '') && /[а-яіїєґ]/i.test(r[nameCol] || '')).map(r => r[nameCol]);
+    }
+  }
+  return { file: fname, cls, subj, students, dates: [...dates] };
+}
+function estHours(dates) {
+  const y0 = parseInt(S.year, 10) || new Date().getFullYear(), wk = new Map();
+  for (const x of dates) {
+    const [dd, mm] = x.split('/').map(Number);
+    const dt = new Date(mm >= 8 ? y0 : y0 + 1, mm - 1, dd);
+    dt.setDate(dt.getDate() - (dt.getDay() + 6) % 7);
+    const k = dt.toDateString(); wk.set(k, (wk.get(k) || 0) + 1);
+  }
+  if (!wk.size) return null;
+  const freq = {};
+  for (const c of wk.values()) freq[c] = (freq[c] || 0) + 1;
+  return +Object.entries(freq).sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0];
+}
+function applyImport(info, res) {
+  if (!info.cls) {
+    const ans = prompt(`Не вдалося визначити клас у файлі «${info.file}». Вкажіть клас (напр. 7-А):`);
+    if (!ans) { res.push({ file: info.file, err: 'пропущено — клас не вказано' }); return; }
+    info.cls = normClass(ans);
+  }
+  let c = S.classes.find(x => x.name === info.cls);
+  const isNew = !c;
+  if (!c) { c = { id: uid(), name: info.cls, students: null }; S.classes.push(c); }
+  if (info.students.length) {
+    const last = n => n.trim().split(/\s+/).pop();
+    c.students = info.students.length;
+    c.boys = info.students.filter(n => /(ович|евич|йович|ич|огли)$/i.test(last(n))).length;
+    c.girls = info.students.filter(n => /(івна|ївна|вна|кизи)$/i.test(last(n))).length;
+  }
+  c.src = 'Мрія';
+  let s = null, est = null, planSet = false;
+  if (info.subj) {
+    s = findSubject(info.subj);
+    if (!s) { s = { id: uid(), name: info.subj, split: guessSplit(info.subj) }; S.subjects.push(s); }
+    est = estHours(info.dates);
+    const k = c.id + '|' + s.id;
+    if (est && !S.plan[k]?.h) { S.plan[k] = { ...S.plan[k], h: est, est: true }; planSet = true; }
+  }
+  res.push({ file: info.file, cls: c.name, isNew, students: info.students.length, boys: c.boys, girls: c.girls, subj: s?.name, est, planSet });
+}
+let lastImport = null;
+async function importBuffer(buf, name, res) {
+  const z = unzip(buf);
+  if (!z.has('xl/workbook.xml')) {
+    const inner = z.names.filter(n => /\.xlsx$/i.test(n));
+    if (!inner.length) throw new Error('це не файл Excel (.xlsx)');
+    for (const n of inner) await importBuffer(await z.bytes(n), n.split('/').pop(), res);
+    return;
+  }
+  applyImport(await readMriya(z, name), res);
+}
+async function importFiles(files) {
+  const json = files.find(f => /\.json$/i.test(f.name));
+  if (json) return openJsonFile(json);
+  await snapshot('перед імпортом з Мрії');
+  const res = [];
+  for (const f of files) {
+    try { await importBuffer(await f.arrayBuffer(), f.name, res); }
+    catch (e) { res.push({ file: f.name, err: e.message || String(e) }); }
+  }
+  lastImport = res; save(); go('classes');
+}
+async function openJsonFile(f) {
+  try {
+    const d = JSON.parse(await f.text());
+    if (!valid(d)) return toast('Це не файл програми «Навантаження»');
+    if (S.classes.length && !confirm(`Замінити поточні дані (${summary(S)}) даними з файлу «${f.name}» (${summary(d)})?\n\nПоточні дані спершу збережуться в копію.`)) return;
+    await takeData(d, f.name); render();
+  } catch (e) { toast('Не вдалося прочитати файл'); }
+}
+
+/* ---------- експорт .xlsx ---------- */
+const enc = new TextEncoder();
+let CRC;
+function crc32(u) {
+  if (!CRC) { CRC = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let j = 0; j < 8; j++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; CRC[n] = c >>> 0; } }
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u.length; i++) c = CRC[(c ^ u[i]) & 255] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function zip(files, type) {
+  const parts = [], central = [];
+  let off = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), data = enc.encode(f.data), crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 33, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(14, 33, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    off += 30 + name.length + data.length;
+  }
+  const cd = central.reduce((a, b) => a + b.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cd, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type });
+}
+const xe = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function colName(i) { let s = ''; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = (i - m - 1) / 26; } return s; }
+function sheetXml(sh) {
+  const data = sh.rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => {
+    if (v === '' || v == null) return '';
+    const ref = colName(ci) + (ri + 1), st = ri === 0 || (sh.bold && sh.bold.has(ri)) ? ' s="1"' : '';
+    return typeof v === 'number' ? `<c r="${ref}"${st}><v>${v}</v></c>` : `<c r="${ref}"${st} t="inlineStr"><is><t>${xe(v)}</t></is></c>`;
+  }).join('') + '</row>').join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>` +
+    sh.widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('') + `</cols><sheetData>${data}</sheetData></worksheet>`;
+}
+function buildXlsx(sheets) {
+  const M = 'http://schemas.openxmlformats.org/', T = M + 'officeDocument/2006/relationships/';
+  const files = [
+    { name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${M}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` +
+      sheets.map((s, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') + '</Types>' },
+    { name: '_rels/.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${M}package/2006/relationships"><Relationship Id="rId1" Type="${T}officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+    { name: 'xl/workbook.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${M}spreadsheetml/2006/main" xmlns:r="${M}officeDocument/2006/relationships"><sheets>` +
+      sheets.map((s, i) => `<sheet name="${xe(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') + '</sheets></workbook>' },
+    { name: 'xl/_rels/workbook.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${M}package/2006/relationships">` +
+      sheets.map((s, i) => `<Relationship Id="rId${i + 1}" Type="${T}worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('') +
+      `<Relationship Id="rId${sheets.length + 1}" Type="${T}styles" Target="styles.xml"/></Relationships>` },
+    { name: 'xl/styles.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="${M}spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>` }
+  ];
+  sheets.forEach((s, i) => files.push({ name: `xl/worksheets/sheet${i + 1}.xml`, data: sheetXml(s) }));
+  return zip(files, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+const r2 = n => Math.round(n * 100) / 100;
+function exportXlsx() {
+  const C = cls(), L = loads(), U = units();
+  const summary = [['№', 'Вчитель', 'Посада / примітка', 'Предмети', 'Годин на тиждень', 'Ставок', 'Стан']];
+  const detail = [['Вчитель', 'Предмет / вид роботи', 'Клас', 'Група', 'Годин на тиждень']];
+  const matrix = [['Вчитель', 'Предмет', ...C.map(c => c.name), 'Разом']];
+  const bold = new Set();
+  L.forEach((x, i) => {
+    const subs = bySubject(x);
+    summary.push([i + 1, x.t.name, x.t.note || '', [...subs.map(s => s.s.name), ...x.extra.map(e => e.title)].join(', '), r2(x.total), r2(x.total / S.stavka), status(x.total)[0]]);
+    x.rows.forEach(u => detail.push([x.t.name, u.s.name, u.c.name, u.g > 1 ? u.i + 1 : '', u.h]));
+    x.extra.forEach(e => detail.push([x.t.name, e.title, '', '', +e.h || 0]));
+    subs.forEach(s => matrix.push([x.t.name, s.s.name, ...C.map(c => r2(s.parts.filter(p => p.u.c === c).reduce((a, p) => a + p.u.h, 0)) || ''), r2(s.h)]));
+    x.extra.forEach(e => matrix.push([x.t.name, e.title, ...C.map(() => ''), +e.h || 0]));
+    bold.add(matrix.length); matrix.push([x.t.name, 'Разом', ...C.map(c => r2(x.rows.filter(u => u.c === c).reduce((a, u) => a + u.h, 0)) || ''), r2(x.total)]);
+  });
+  const plan = [['Предмет', ...C.map(c => c.name), 'Разом годин учням', 'Разом годин вчителям (з групами)']];
+  plan.push(['Кількість учнів', ...C.map(c => c.students ?? ''), '', '']);
+  S.subjects.forEach(s => {
+    if (!C.some(c => hoursOf(c, s))) return;
+    plan.push([s.name, ...C.map(c => { const h = hoursOf(c, s), g = groupsOf(c, s); return !h ? '' : g > 1 ? `${fmt(h)} × ${g} гр.` : h; }),
+      r2(C.reduce((a, c) => a + hoursOf(c, s), 0)), r2(C.reduce((a, c) => a + hoursOf(c, s) * groupsOf(c, s), 0))]);
+  });
+  const un = [['Клас', 'Предмет', 'Група', 'Годин на тиждень']];
+  U.filter(u => !u.t).forEach(u => un.push([u.c.name, u.s.name, u.g > 1 ? u.i + 1 : '', u.h]));
+  const sheets = [
+    { name: 'Підсумок', rows: summary, widths: [5, 34, 22, 60, 16, 9, 16] },
+    { name: 'Розподіл', rows: detail, widths: [34, 30, 8, 7, 16] },
+    { name: 'Зведена', rows: matrix, widths: [34, 30, ...C.map(() => 7), 9], bold },
+    { name: 'Навчальний план', rows: plan, widths: [32, ...C.map(() => 11), 18, 30] },
+    { name: 'Не розподілено', rows: un, widths: [8, 32, 7, 16] }
+  ];
+  download(buildXlsx(sheets), `Навантаження ${S.school ? S.school + ' ' : ''}${S.year.replace('/', '-')} (${today()}).xlsx`);
+  toast('Файл Excel готовий');
+}
+
+/* ---------- вигляд ---------- */
+const TABS = [['help', 'Як це працює'], ['classes', '1. Класи'], ['plan', '2. Навчальний план'], ['teachers', '3. Вчителі'], ['dist', '4. Розподіл'], ['load', '5. Навантаження'], ['settings', 'Дані і копії']];
+let TAB = 'help';
+try { TAB = localStorage.getItem(LS + ':tab') || (S.classes.length ? 'classes' : 'help'); } catch (e) {}
+const V = {};
+const dist = { only: false, cls: '' }, bulk = { s: '', t: '', grp: 'free', cls: new Set() };
+
+function go(tab) { TAB = tab; try { localStorage.setItem(LS + ':tab', tab); } catch (e) {} render(); scrollTo(0, 0); }
+function render() {
+  const free = units().filter(u => !u.t).length;
+  $('#tabs').innerHTML = TABS.map(([k, t]) => `<button data-tab="${k}" aria-selected="${k === TAB}">${t}${k === 'dist' && free && S.teachers.length ? `<b>${free}</b>` : ''}</button>`).join('');
+  $('#schoolLbl').textContent = [S.school, S.year + ' н. р.'].filter(Boolean).join(' · ');
+  $('#view').innerHTML = (V[TAB] || V.help)();
+  if (TAB === 'plan') planTotals();
+  if (TAB === 'settings') renderSnaps();
+  showSave();
+}
+const empty = (msg, tab, label) => `<section class="card"><p>${msg}</p><div><button class="btn primary" data-go="${tab}">${label}</button></div></section>`;
+const tOptions = (sel, hours) => `<option value="">— не призначено —</option>` + teachersSorted().map(t => `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}${hours ? ' · ' + fmt(hours.get(t.id) || 0) + ' год' : ''}</option>`).join('');
+
+V.help = () => {
+  const C = S.classes.length, P = S.subjects.filter(s => S.classes.some(c => hoursOf(c, s))).length, T = S.teachers.length;
+  const U = units(), free = U.filter(u => !u.t).reduce((a, u) => a + u.h, 0), all = U.reduce((a, u) => a + u.h, 0);
+  const pill = (ok, txt) => `<span class="pill ${ok ? 'ok' : 'warn'}">${txt}</span>`;
+  return `
+<section class="card">
+  <h2>Як формується педагогічне навантаження</h2>
+  <ol class="steps">
+    <li><b>Класи і кількість учнів.</b> Беруться з Мрії (експорт журналу класу в Excel) або вводяться вручну. Кількість учнів потрібна, щоб визначити поділ на групи.</li>
+    <li><b>Навчальний план школи</b> — скільки годин на тиждень кожного предмета в кожному класі. Береться з освітньої програми школи, яку затверджує педрада на основі типової освітньої програми МОН. Програма може підказати години за датами уроків у журналі з Мрії, але їх треба звірити з планом.</li>
+    <li><b>Поділ на групи.</b> Іноземна мова, інформатика, технології, а в 10–11 класах і фізкультура ділять клас на групи, якщо учнів не менше ${S.splitMin} (наказ МОН № 128 від 20.02.2002; поріг можна змінити в налаштуваннях). Кожна група — окремі години вчителю.</li>
+    <li><b>Розподіл.</b> Кожну годину кожного класу (або групи) закріплюють за вчителем.</li>
+    <li><b>Навантаження вчителя</b> = сума його годин на тиждень + гуртки, індивідуальне навчання тощо. Ставка — ${S.stavka} год/тиж: ${S.stavka / 2} год = 0,5 ставки, ${S.stavka * 1.5} год = 1,5 ставки.</li>
+    <li><b>Результат</b> — таблиця для наказу про розподіл навантаження і тарифікації: експорт в Excel або друк.</li>
+  </ol>
+</section>
+<section class="card">
+  <h3>Що вже зроблено</h3>
+  <div class="chk">
+    <span>1.</span><span>Класи</span>${pill(C, C ? C + ' класів' : 'нема')}
+    <span>2.</span><span>Предмети з годинами в плані</span>${pill(P, P ? P + ' предметів' : 'нема')}
+    <span>3.</span><span>Вчителі</span>${pill(T, T ? T + ' вчителів' : 'нема')}
+    <span>4.</span><span>Розподілено годин</span>${pill(all && !free, all ? fmt(all - free) + ' з ' + fmt(all) : '—')}
+  </div>
+  <div class="form"><button class="btn primary" data-go="${!C ? 'classes' : !P ? 'plan' : !T ? 'teachers' : free ? 'dist' : 'load'}">Продовжити</button></div>
+</section>
+<section class="card notice">
+  <h3>Що вивантажити з Мрії</h3>
+  <p>Журнали → клас → предмет → «Експорт» → Excel. З кожного файлу програма бере назву класу, список учнів (кількість, хлопці/дівчата) і дати уроків. Можна перетягнути одразу багато файлів.</p>
+  <p>Годин навчального плану і вчителів у такому файлі нема — їх вносять у розділах 2 і 3. Якщо в Мрії з доступом адміністратора є експорт навчального плану або розкладу — принесіть зразок, програму можна навчити читати і його.</p>
+  <p class="muted">Прізвища учнів програма не зберігає — лише кількість учнів, хлопців і дівчат. Усі дані лежать тільки на цьому комп’ютері й нікуди не надсилаються: сторінці заборонено звертатися до мережі.</p>
+</section>`;
+};
+
+V.classes = () => {
+  const list = cls();
+  const imp = lastImport ? `<div class="notice ${lastImport.some(r => r.err) ? 'warn' : 'ok'}"><header class="form"><b>Імпорт: ${lastImport.filter(r => !r.err).length} з ${lastImport.length} файлів</b><span class="grow"></span><button class="x" data-act="closeImport" title="Закрити">×</button></header><ul>` +
+    lastImport.map(r => r.err ? `<li class="bad">${esc(r.file)} — ${esc(r.err)}</li>` :
+      `<li><b>${esc(r.cls)}</b>${r.isNew ? ' (новий)' : ''}${r.subj ? ', ' + esc(r.subj) : ''} — ${r.students ? `учнів: ${r.students} (хл. ${r.boys}, дів. ${r.girls})` : 'учнів не знайдено'}${r.est ? `, уроків ~${r.est} на тиждень${r.planSet ? ' → внесено в план, перевірте' : ''}` : ''}</li>`).join('') + '</ul></div>' : '';
+  return `
+<section class="card">
+  <header><h2>Класи</h2></header>
+  <div class="drop" data-act="pickXlsx" role="button" tabindex="0"><b>Перетягніть сюди файли Excel з Мрії</b><span>або натисніть, щоб вибрати. Журнали → клас → предмет → Експорт.</span></div>
+  ${imp}
+  <div class="form">
+    <label>Клас<input id="newClass" class="w6" placeholder="5-А"></label>
+    <label>Учнів<input id="newCount" type="number" min="0" class="w4"></label>
+    <button class="btn" data-act="addClass" style="align-self:flex-end">Додати вручну</button>
+    <span class="grow"></span>
+    <label class="grow">Кілька класів одразу (через кому)<input id="bulkClasses" placeholder="5-А, 5-Б, 6-А, 6-Б"></label>
+    <button class="btn" data-act="addClasses" style="align-self:flex-end">Додати</button>
+  </div>
+</section>
+<section class="card">
+  ${list.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Клас</th><th class="num">Учнів</th><th class="num">Хлопців</th><th class="num">Дівчат</th><th class="num">Годин у плані</th><th>Поділ на групи</th><th>Джерело</th><th></th></tr></thead><tbody>` +
+    list.map(c => {
+      const h = S.subjects.reduce((a, s) => a + hoursOf(c, s), 0);
+      const split = S.subjects.filter(s => hoursOf(c, s) && groupsOf(c, s) > 1).map(s => s.name);
+      return `<tr><td><input class="w6" data-f="class.name" data-id="${c.id}" value="${esc(c.name)}"></td>
+        <td class="num"><input type="number" min="0" class="w4" data-f="class.students" data-id="${c.id}" value="${c.students ?? ''}"></td>
+        <td class="num"><input type="number" min="0" class="w4" data-f="class.boys" data-id="${c.id}" value="${c.boys ?? ''}"></td>
+        <td class="num"><input type="number" min="0" class="w4" data-f="class.girls" data-id="${c.id}" value="${c.girls ?? ''}"></td>
+        <td class="num">${fmtZ(h) || '<span class="muted">—</span>'}</td>
+        <td>${split.length ? esc(split.join(', ')) : '<span class="muted">—</span>'}</td>
+        <td class="muted">${esc(c.src || 'вручну')}</td>
+        <td><button class="x" data-act="delClass" data-id="${c.id}" title="Видалити клас">×</button></td></tr>`;
+    }).join('') + '</tbody></table></div>' : '<p class="muted">Класів ще нема. Перетягніть файли з Мрії або додайте вручну.</p>'}
+</section>`;
+};
+
+V.plan = () => {
+  const C = cls();
+  if (!C.length) return empty('Спочатку додайте класи.', 'classes', 'До класів');
+  const cell = (c, s) => {
+    const p = cellOf(c, s), g = groupsOf(c, s);
+    return `<td class="pc${p?.est ? ' est' : ''}"${p?.est ? ' title="Оцінено за датами уроків з Мрії — перевірте"' : ''}><input type="number" min="0" max="40" step="0.5" data-plan="${c.id}|${s.id}" value="${p?.h || ''}" aria-label="${esc(s.name)}, ${esc(c.name)}"><button class="grp${g > 1 ? ' on' : ''}${p?.g ? ' man' : ''}" data-act="cycleG" data-k="${c.id}|${s.id}" title="Груп: ${g} (${p?.g ? 'вручну' : 'автоматично'}). Натисніть, щоб змінити"${p?.h ? '' : ' hidden'}>${g}гр</button></td>`;
+  };
+  return `
+<section class="card">
+  <header><h2>Навчальний план</h2><span class="sp"></span>
+    <div class="form">
+      <label>Скопіювати години з класу<select id="copyFrom">${C.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>
+      <button class="btn" data-act="copyPlan" style="align-self:flex-end">на всю паралель</button>
+    </div>
+  </header>
+  <p class="muted">Години на тиждень. Кнопка «1гр / 2гр» — кількість груп (синя = ділиться; з рамкою = задано вручну). Жовті клітинки підказані з Мрії — звірте з планом школи.</p>
+  <div class="tblwrap"><table class="tbl grid">
+    <thead><tr><th class="subj">Предмет</th>${C.map(c => `<th>${esc(c.name)}<small>${c.students ?? '?'} уч.</small></th>`).join('')}<th>Разом<small>вчителям</small></th></tr></thead>
+    <tbody>${S.subjects.map(s => `<tr><th class="subj">${esc(s.name)}${s.split ? `<small>${SPLIT[s.split].toLowerCase()}</small>` : ''}</th>${C.map(c => cell(c, s)).join('')}<td class="tot" data-rt="${s.id}"></td></tr>`).join('')}</tbody>
+    <tfoot>
+      <tr><th class="subj">Годин учням</th>${C.map(c => `<td data-ct="${c.id}"></td>`).join('')}<td data-ct="all"></td></tr>
+      <tr><th class="subj">Годин вчителям (з групами)</th>${C.map(c => `<td data-cg="${c.id}"></td>`).join('')}<td data-cg="all"></td></tr>
+    </tfoot>
+  </table></div>
+</section>
+<section class="card">
+  <header><h3>Предмети</h3></header>
+  <div class="form">
+    <input id="newSubj" class="w20" placeholder="Назва предмета">
+    <select id="newSplit">${SPLIT.map((t, i) => `<option value="${i}">${t}</option>`).join('')}</select>
+    <button class="btn" data-act="addSubj">Додати предмет</button>
+  </div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th></th><th>Назва</th><th>Поділ на групи</th><th class="num">Годин учням</th><th></th></tr></thead><tbody>
+  ${S.subjects.map((s, i) => `<tr><td style="white-space:nowrap"><button class="x" data-act="subjMove" data-id="${s.id}" data-d="-1" title="Вище"${i ? '' : ' disabled'}>↑</button><button class="x" data-act="subjMove" data-id="${s.id}" data-d="1" title="Нижче"${i < S.subjects.length - 1 ? '' : ' disabled'}>↓</button></td>
+    <td><input class="w20" data-f="subj.name" data-id="${s.id}" value="${esc(s.name)}"></td>
+    <td><select data-f="subj.split" data-id="${s.id}">${SPLIT.map((t, k) => `<option value="${k}"${k === s.split ? ' selected' : ''}>${t}</option>`).join('')}</select></td>
+    <td class="num">${fmtZ(C.reduce((a, c) => a + hoursOf(c, s), 0))}</td>
+    <td><button class="x" data-act="delSubj" data-id="${s.id}" title="Видалити предмет">×</button></td></tr>`).join('')}
+  </tbody></table></div>
+</section>`;
+};
+function planTotals() {
+  const C = cls();
+  let allH = 0, allG = 0;
+  for (const s of S.subjects) {
+    const td = $(`[data-rt="${s.id}"]`);
+    if (td) td.textContent = fmtZ(C.reduce((a, c) => a + hoursOf(c, s) * groupsOf(c, s), 0));
+  }
+  for (const c of C) {
+    const h = S.subjects.reduce((a, s) => a + hoursOf(c, s), 0), g = S.subjects.reduce((a, s) => a + hoursOf(c, s) * groupsOf(c, s), 0);
+    allH += h; allG += g;
+    const a = $(`[data-ct="${c.id}"]`), b = $(`[data-cg="${c.id}"]`);
+    if (a) a.textContent = fmtZ(h);
+    if (b) b.textContent = fmtZ(g);
+  }
+  const a = $('[data-ct="all"]'), b = $('[data-cg="all"]');
+  if (a) a.textContent = fmtZ(allH);
+  if (b) b.textContent = fmtZ(allG);
+}
+
+V.teachers = () => {
+  const L = loads(), T = teachersSorted();
+  return `
+<div class="cols">
+<section class="card">
+  <header><h2>Вчителі</h2></header>
+  <label class="form" style="flex-direction:column;align-items:stretch">Вставте список ПІБ — кожен з нового рядка
+    <textarea id="newTeachers" placeholder="Іваненко Ірина Петрівна&#10;Петренко Олег Васильович"></textarea></label>
+  <div class="form"><button class="btn primary" data-act="addTeachers">Додати вчителів</button></div>
+  ${T.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>ПІБ</th><th>Посада / примітка</th><th class="num">Годин</th><th class="num">Ставок</th><th></th></tr></thead><tbody>` +
+    L.map(x => `<tr><td><input class="w20" data-f="t.name" data-id="${x.t.id}" value="${esc(x.t.name)}"></td>
+      <td><input class="w12" data-f="t.note" data-id="${x.t.id}" value="${esc(x.t.note || '')}" placeholder="вчитель"></td>
+      <td class="num">${fmt(x.total)}</td><td class="num">${fmt(x.total / S.stavka)}</td>
+      <td><button class="x" data-act="delTeacher" data-id="${x.t.id}" title="Видалити">×</button></td></tr>`).join('') + '</tbody></table></div>' : '<p class="muted">Вчителів ще нема.</p>'}
+</section>
+<section class="card">
+  <header><h3>Додаткові години</h3></header>
+  <p class="muted">Гуртки, індивідуальне навчання, консультації, курси за вибором поза планом — усе, що теж входить у навантаження.</p>
+  ${T.length ? `<div class="form">
+    <select id="exT">${tOptions('')}</select>
+    <input id="exTitle" class="grow" placeholder="Напр.: гурток «Волейбол»">
+    <input id="exH" type="number" min="0" step="0.5" class="w4" placeholder="год">
+    <button class="btn" data-act="addExtra">Додати</button></div>` : '<p class="muted">Спочатку додайте вчителів.</p>'}
+  ${S.extras.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Вчитель</th><th>Вид роботи</th><th class="num">Годин</th><th></th></tr></thead><tbody>` +
+    S.extras.map(e => `<tr><td>${esc(byId(S.teachers, e.teacherId)?.name || '?')}</td>
+      <td><input class="grow" data-f="ex.title" data-id="${e.id}" value="${esc(e.title)}"></td>
+      <td class="num"><input type="number" min="0" step="0.5" class="w4" data-f="ex.h" data-id="${e.id}" value="${e.h}"></td>
+      <td><button class="x" data-act="delExtra" data-id="${e.id}" title="Видалити">×</button></td></tr>`).join('') + '</tbody></table></div>' : ''}
+</section>
+</div>`;
+};
+
+V.dist = () => {
+  const U = units();
+  if (!U.length) return empty('Спочатку внесіть години в навчальний план.', 'plan', 'До навчального плану');
+  if (!S.teachers.length) return empty('Спочатку додайте вчителів.', 'teachers', 'До вчителів');
+  const hours = new Map(loads().map(x => [x.t.id, x.total]));
+  const all = U.reduce((a, u) => a + u.h, 0), done = U.filter(u => u.t).reduce((a, u) => a + u.h, 0);
+  const subs = S.subjects.filter(s => U.some(u => u.s === s));
+  if (!subs.some(s => s.id === bulk.s)) bulk.s = subs[0].id;
+  const bs = byId(S.subjects, bulk.s), bC = cls().filter(c => hoursOf(c, bs));
+  const C = cls().filter(c => !dist.cls || c.id === dist.cls);
+  const blocks = C.map(c => {
+    const rows = U.filter(u => u.c === c && (!dist.only || !u.t));
+    if (!rows.length) return '';
+    return `<section class="card"><header><h3>${esc(c.name)}</h3><span class="muted">${c.students ?? '?'} учнів</span></header>
+      <div class="tblwrap"><table class="tbl"><thead><tr><th>Предмет</th><th>Група</th><th class="num">Годин</th><th>Вчитель</th></tr></thead><tbody>` +
+      rows.map(u => `<tr class="${u.t ? '' : 'unassigned'}"><td>${esc(u.s.name)}</td><td>${u.g > 1 ? 'гр. ' + (u.i + 1) + ' з ' + u.g : '<span class="muted">весь клас</span>'}</td><td class="num">${fmt(u.h)}</td>
+        <td><select data-f="assign" data-k="${u.key}">${tOptions(u.t, hours)}</select></td></tr>`).join('') + '</tbody></table></div></section>';
+  }).join('');
+  return `
+<section class="card">
+  <header><h2>Розподіл годин</h2><span class="sp"></span><b>${fmt(done)} з ${fmt(all)} год</b></header>
+  <div class="bar"><i style="width:${all ? done / all * 100 : 0}%"></i></div>
+</section>
+<section class="card">
+  <header><h3>Швидко призначити на кілька класів</h3></header>
+  <div class="form">
+    <label>Предмет<select data-f="bulk.s">${subs.map(s => `<option value="${s.id}"${s.id === bulk.s ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>
+    <label>Вчитель<select data-f="bulk.t">${tOptions(bulk.t, hours)}</select></label>
+    <label>Групи<select data-f="bulk.grp">${[['free', 'лише без вчителя'], ['0', 'група 1 / весь клас'], ['1', 'група 2'], ['all', 'усі групи (замінити)']].map(([v, t]) => `<option value="${v}"${v === bulk.grp ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+  </div>
+  <div class="chips">${bC.map(c => `<label><input type="checkbox" data-f="bulk.c" data-id="${c.id}"${bulk.cls.has(c.id) ? ' checked' : ''}>${esc(c.name)}${groupsOf(c, bs) > 1 ? ' (' + groupsOf(c, bs) + ' гр.)' : ''}</label>`).join('')}
+    <button class="btn small" data-act="bulkAll">усі</button></div>
+  <div class="form"><button class="btn primary" data-act="bulkAssign">Призначити</button></div>
+</section>
+<section class="card noprint">
+  <div class="form">
+    <label>Клас<select data-f="dist.cls"><option value="">усі класи</option>${cls().map(c => `<option value="${c.id}"${c.id === dist.cls ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
+    <label style="flex-direction:row;align-items:center;gap:6px;align-self:flex-end;color:var(--ink)"><input type="checkbox" data-f="dist.only"${dist.only ? ' checked' : ''}> лише нерозподілені</label>
+  </div>
+</section>
+<div class="cols">${blocks || '<section class="card"><p class="ok">Усе розподілено.</p></section>'}</div>`;
+};
+
+V.load = () => {
+  const L = loads(), U = units();
+  if (!S.teachers.length) return empty('Спочатку додайте вчителів.', 'teachers', 'До вчителів');
+  const all = U.reduce((a, u) => a + u.h, 0), free = U.filter(u => !u.t), freeH = free.reduce((a, u) => a + u.h, 0);
+  const extraH = S.extras.reduce((a, e) => a + (+e.h || 0), 0);
+  let n = 0;
+  const body = L.map(x => {
+    const subs = bySubject(x), lines = [...subs.map(s => [esc(s.s.name), s.parts.map(p => `${esc(p.label)}&nbsp;(${fmt(p.u.h)})`).join(', '), s.h]), ...x.extra.map(e => [esc(e.title), '<span class="muted">додатково</span>', +e.h || 0])];
+    if (!lines.length) lines.push(['<span class="muted">—</span>', '', 0]);
+    const [st, cl] = status(x.total), span = lines.length;
+    n++;
+    return lines.map((l, i) => `<tr${i ? '' : ' class="teacher-first"'}>` +
+      (i ? '' : `<td rowspan="${span}" class="num">${n}</td><td rowspan="${span}"><b>${esc(x.t.name)}</b>${x.t.note ? `<br><span class="muted">${esc(x.t.note)}</span>` : ''}</td>`) +
+      `<td>${l[0]}</td><td>${l[1]}</td><td class="num">${fmtZ(l[2])}</td>` +
+      (i ? '' : `<td rowspan="${span}" class="num"><b>${fmt(x.total)}</b></td><td rowspan="${span}" class="num">${fmt(x.total / S.stavka)}</td><td rowspan="${span}"><span class="pill ${cl}">${st}</span></td>`) + '</tr>').join('');
+  }).join('');
+  return `
+<div class="tiles">
+  <div class="tile"><span>Годин за планом (з групами)</span><b>${fmt(all)}</b></div>
+  <div class="tile"><span>Розподілено</span><b class="${freeH ? '' : 'ok'}">${fmt(all - freeH)}</b></div>
+  <div class="tile"><span>Не розподілено</span><b class="${freeH ? 'bad' : ''}">${fmt(freeH)}</b></div>
+  <div class="tile"><span>Додаткові години</span><b>${fmt(extraH)}</b></div>
+  <div class="tile"><span>Вчителів</span><b>${S.teachers.length}</b></div>
+  <div class="tile"><span>Ставок разом</span><b>${fmt((all - freeH + extraH) / S.stavka)}</b></div>
+</div>
+<section class="card">
+  <header><h2>Навантаження вчителів${S.school ? ' — ' + esc(S.school) : ''}, ${esc(S.year)} н. р.</h2><span class="sp"></span>
+    <div class="form noprint"><button class="btn primary" data-act="exportXlsx">Експорт в Excel</button><button class="btn" data-act="print">Друк</button></div></header>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th class="num">№</th><th>Вчитель</th><th>Предмет</th><th>Класи (годин)</th><th class="num">Годин</th><th class="num">Разом</th><th class="num">Ставок</th><th>Стан</th></tr></thead>
+  <tbody>${body}</tbody></table></div>
+  <p class="muted">Ставка = ${S.stavka} год на тиждень.</p>
+</section>
+${free.length ? `<section class="card"><header><h3 class="bad">Не розподілено: ${fmt(freeH)} год</h3><span class="sp"></span><button class="btn small noprint" data-go="dist">До розподілу</button></header>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>Клас</th><th>Предмет</th><th>Група</th><th class="num">Годин</th></tr></thead><tbody>` +
+  free.map(u => `<tr><td>${esc(u.c.name)}</td><td>${esc(u.s.name)}</td><td>${u.g > 1 ? u.i + 1 : ''}</td><td class="num">${fmt(u.h)}</td></tr>`).join('') + '</tbody></table></div></section>' : ''}`;
+};
+
+V.settings = () => `
+<section class="card">
+  <header><h2>Налаштування</h2></header>
+  <div class="form">
+    <label>Назва школи<input class="w20" data-f="set.school" value="${esc(S.school)}" placeholder="Напр.: Ліцей № 1"></label>
+    <label>Навчальний рік<input class="w6" data-f="set.year" value="${esc(S.year)}"></label>
+    <label>Ставка, год/тиж<input type="number" min="1" class="w4" data-f="set.stavka" value="${S.stavka}"></label>
+    <label>Поділ на групи від, учнів<input type="number" min="1" class="w4" data-f="set.splitMin" value="${S.splitMin}"></label>
+  </div>
+</section>
+<section class="card">
+  <header><h3>Резервна копія файлом</h3></header>
+  <p>Файл .json з усіма даними. Його можна переслати (пошта, Telegram, флешка), відкрити на іншому ПК або відновити з нього дані тут.</p>
+  <div class="form">
+    <button class="btn primary" data-act="backup">Завантажити копію файлом</button>
+    <button class="btn" data-act="openJson">Відновити з файлу…</button>
+  </div>
+</section>
+<section class="card">
+  <header><h3>Автоматичні копії в папку</h3></header>
+  ${!canDir ? '<p class="muted">Доступно лише в Chrome або Edge.</p>' : DIR ? `<p>Папка «<b>${esc(DIR.name)}</b>»: ${dirOk ? '<span class="ok">копії записуються</span>' : '<span class="warn">потрібен дозвіл</span>'}. Там лежить файл «Навантаження — поточні дані.json» і підпапка «Копії по днях» (по одному файлу на кожен день роботи).</p>
+    <div class="form">${dirOk ? '' : '<button class="btn warn" data-act="reconnectDir">Дозволити запис</button>'}<button class="btn" data-act="pickDir">Вибрати іншу папку…</button><button class="btn danger" data-act="forgetDir">Не робити копії в папку</button></div>` :
+    `<p>Виберіть папку (наприклад, «Документи\\Навантаження» або флешку) — програма сама записуватиме туди поточні дані й окрему копію за кожен день.</p><div><button class="btn primary" data-act="pickDir">Вибрати папку для копій…</button></div>`}
+</section>
+<section class="card">
+  <header><h3>Точки відновлення</h3><span class="sp"></span><button class="btn small" data-act="snapNow">Створити зараз</button></header>
+  <p class="muted">Зберігаються всередині програми автоматично: при кожному відкритті, перед імпортом з Мрії, перед відновленням і очищенням. Останні ${KEEP_SNAPS}.</p>
+  <div id="snaps"><p class="muted">Завантаження…</p></div>
+</section>
+<section class="card">
+  <header><h3 class="bad">Почати з нуля</h3></header>
+  <p class="muted">Видаляє всі класи, план, вчителів і розподіл. Перед цим автоматично створюється точка відновлення.</p>
+  <div><button class="btn danger" data-act="reset">Очистити всі дані</button></div>
+</section>`;
+async function renderSnaps() {
+  const el = $('#snaps'); if (!el) return;
+  const all = await listSnaps().catch(() => []);
+  const dt = t => new Date(t).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  el.innerHTML = all.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Коли</th><th>Причина</th><th>Що всередині</th><th></th></tr></thead><tbody>` +
+    all.map(s => `<tr><td class="num" style="text-align:left">${dt(s.at)}</td><td>${esc(s.reason)}</td><td class="muted">${esc(s.info)}</td>
+      <td style="white-space:nowrap"><button class="btn small" data-act="snapRestore" data-id="${s.id}">Відновити</button> <button class="btn small" data-act="snapDownload" data-id="${s.id}">Файлом</button></td></tr>`).join('') +
+    '</tbody></table></div>' : '<p class="muted">Копій ще нема.</p>';
+}
+
+/* ---------- дії ---------- */
+const ACT = {
+  pickXlsx: () => $('#fileXlsx').click(),
+  closeImport: () => { lastImport = null; render(); },
+  addClass: () => {
+    const name = normClass($('#newClass').value), n = $('#newCount').value;
+    if (!name) return toast('Вкажіть клас');
+    if (S.classes.some(c => c.name === name)) return toast('Клас ' + name + ' уже є');
+    S.classes.push({ id: uid(), name, students: n === '' ? null : +n, src: 'вручну' });
+    save(); render(); $('#newClass')?.focus();
+  },
+  addClasses: () => {
+    const names = $('#bulkClasses').value.split(/[,;\n]+/).map(normClass).filter(Boolean);
+    let k = 0;
+    for (const name of names) if (!S.classes.some(c => c.name === name)) { S.classes.push({ id: uid(), name, students: null, src: 'вручну' }); k++; }
+    save(); render(); toast('Додано класів: ' + k);
+  },
+  delClass: el => {
+    const c = byId(S.classes, el.dataset.id);
+    if (!confirm(`Видалити клас ${c.name} разом з його годинами і розподілом?`)) return;
+    S.classes = S.classes.filter(x => x !== c);
+    for (const m of [S.plan, S.assign]) for (const k in m) if (k.startsWith(c.id + '|')) delete m[k];
+    save(); render();
+  },
+  cycleG: el => {
+    const k = el.dataset.k, [cid, sid] = k.split('|'), c = byId(S.classes, cid), s = byId(S.subjects, sid);
+    const p = S.plan[k] || (S.plan[k] = {});
+    p.g = !p.g ? (autoGroups(c, s) === 1 ? 2 : 1) : p.g >= 3 ? undefined : p.g + 1;
+    if (p.g === autoGroups(c, s)) delete p.g;
+    const g = groupsOf(c, s);
+    el.textContent = g + 'гр';
+    el.classList.toggle('on', g > 1); el.classList.toggle('man', !!p.g);
+    el.title = `Груп: ${g} (${p.g ? 'вручну' : 'автоматично'}). Натисніть, щоб змінити`;
+    save(); planTotals();
+  },
+  copyPlan: () => {
+    const from = byId(S.classes, $('#copyFrom').value), to = S.classes.filter(c => c !== from && gradeOf(c.name) === gradeOf(from.name));
+    if (!to.length) return toast('У паралелі ' + gradeOf(from.name) + ' інших класів нема');
+    if (!confirm(`Скопіювати години ${from.name} в ${to.map(c => c.name).join(', ')}? Наявні години в цих класах буде замінено.`)) return;
+    for (const c of to) for (const s of S.subjects) {
+      const src = S.plan[from.id + '|' + s.id], k = c.id + '|' + s.id;
+      if (src?.h) S.plan[k] = { ...S.plan[k], h: src.h }; else if (S.plan[k]) { delete S.plan[k].h; delete S.plan[k].est; }
+      if (S.plan[k]) delete S.plan[k].est;
+    }
+    save(); render(); toast('Скопійовано');
+  },
+  addSubj: () => {
+    const name = $('#newSubj').value.trim();
+    if (!name) return toast('Вкажіть назву предмета');
+    S.subjects.push({ id: uid(), name, split: +$('#newSplit').value });
+    save(); render();
+  },
+  subjMove: el => {
+    const i = S.subjects.findIndex(s => s.id === el.dataset.id), j = i + +el.dataset.d;
+    if (j < 0 || j >= S.subjects.length) return;
+    [S.subjects[i], S.subjects[j]] = [S.subjects[j], S.subjects[i]];
+    save(); render();
+  },
+  delSubj: el => {
+    const s = byId(S.subjects, el.dataset.id);
+    if (!confirm(`Видалити предмет «${s.name}» з планом і розподілом?`)) return;
+    S.subjects = S.subjects.filter(x => x !== s);
+    for (const m of [S.plan, S.assign]) for (const k in m) if (k.split('|')[1] === s.id) delete m[k];
+    save(); render();
+  },
+  addTeachers: () => {
+    const names = $('#newTeachers').value.split('\n').map(x => x.replace(/^\s*\d+[.)]\s*/, '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+    let k = 0;
+    for (const name of names) if (!S.teachers.some(t => t.name === name)) { S.teachers.push({ id: uid(), name, note: '' }); k++; }
+    save(); render(); toast('Додано вчителів: ' + k);
+  },
+  delTeacher: el => {
+    const t = byId(S.teachers, el.dataset.id);
+    const has = Object.values(S.assign).includes(t.id) || S.extras.some(e => e.teacherId === t.id);
+    if (!confirm(`Видалити ${t.name}?${has ? ' Його години стануть нерозподіленими.' : ''}`)) return;
+    S.teachers = S.teachers.filter(x => x !== t);
+    for (const k in S.assign) if (S.assign[k] === t.id) delete S.assign[k];
+    S.extras = S.extras.filter(e => e.teacherId !== t.id);
+    save(); render();
+  },
+  addExtra: () => {
+    const teacherId = $('#exT').value, title = $('#exTitle').value.trim(), h = parseFloat(($('#exH').value || '').replace(',', '.'));
+    if (!teacherId || !title || !h) return toast('Вкажіть вчителя, вид роботи і години');
+    S.extras.push({ id: uid(), teacherId, title, h });
+    save(); render();
+  },
+  delExtra: el => { S.extras = S.extras.filter(e => e.id !== el.dataset.id); save(); render(); },
+  bulkAll: () => {
+    const bs = byId(S.subjects, bulk.s), ids = cls().filter(c => hoursOf(c, bs)).map(c => c.id);
+    const allOn = ids.every(id => bulk.cls.has(id));
+    bulk.cls = new Set(allOn ? [] : ids); render();
+  },
+  bulkAssign: () => {
+    if (!bulk.t) return toast('Виберіть вчителя');
+    if (!bulk.cls.size) return toast('Позначте класи');
+    let k = 0;
+    for (const u of units()) {
+      if (u.s.id !== bulk.s || !bulk.cls.has(u.c.id)) continue;
+      if (bulk.grp === 'free' && u.t) continue;
+      if ((bulk.grp === '0' || bulk.grp === '1') && u.i !== +bulk.grp) continue;
+      S.assign[u.key] = bulk.t; k++;
+    }
+    bulk.cls.clear(); save(); render(); toast(k ? 'Призначено: ' + k : 'Нічого не змінено — перевірте вибір груп');
+  },
+  exportXlsx,
+  print: () => print(),
+  openJson: () => $('#fileJson').click(),
+  backup: () => download(new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }), `Навантаження ${S.school ? S.school + ' ' : ''}копія ${today()}.json`),
+  pickDir: async () => {
+    try {
+      const h = await showDirectoryPicker({ id: 'navantazhennya', mode: 'readwrite', startIn: 'documents' });
+      DIR = h; dirOk = true; await kvPut('dir', h); await writeFolder(); render(); toast('Копії записуються в папку «' + h.name + '»');
+    } catch (e) { if (e.name !== 'AbortError') toast('Не вдалося вибрати папку'); }
+  },
+  reconnectDir: async () => {
+    try { dirOk = await DIR.requestPermission({ mode: 'readwrite' }) === 'granted'; if (dirOk) await writeFolder(); render(); }
+    catch (e) { toast('Папка недоступна — виберіть її знову'); }
+  },
+  forgetDir: async () => { DIR = null; dirOk = false; await kvDel('dir'); render(); },
+  snapNow: async () => { await snapshot('вручну'); renderSnaps(); toast('Точку відновлення створено'); },
+  snapRestore: async el => {
+    const s = (await listSnaps()).find(x => x.id === +el.dataset.id);
+    if (!s || !confirm(`Відновити дані станом на ${new Date(s.at).toLocaleString('uk-UA')} (${s.info})?\n\nПоточні дані спершу збережуться в копію.`)) return;
+    await takeData(s.data, 'копія від ' + new Date(s.at).toLocaleString('uk-UA')); render();
+  },
+  snapDownload: async el => {
+    const s = (await listSnaps()).find(x => x.id === +el.dataset.id);
+    if (s) download(new Blob([JSON.stringify(s.data, null, 1)], { type: 'application/json' }), `Навантаження копія ${new Date(s.at).toISOString().slice(0, 16).replace(/[T:]/g, '-')}.json`);
+  },
+  reset: async () => {
+    if (prompt('Щоб видалити всі дані, напишіть ТАК') !== 'ТАК') return;
+    await snapshot('перед очищенням');
+    S = blank(); lastImport = null; await flush(); go('help');
+  }
+};
+
+document.addEventListener('click', e => {
+  const tab = e.target.closest('[data-tab]'); if (tab) return go(tab.dataset.tab);
+  const g = e.target.closest('[data-go]'); if (g) return go(g.dataset.go);
+  const a = e.target.closest('[data-act]');
+  if (a && ACT[a.dataset.act]) ACT[a.dataset.act](a);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('.drop')) ACT.pickXlsx();
+  if (e.key === 'Enter' && e.target.id === 'newClass') ACT.addClass();
+  if (e.key === 'Enter' && e.target.id === 'newCount') ACT.addClass();
+  if (e.key === 'Enter' && e.target.id === 'newSubj') ACT.addSubj();
+});
+document.addEventListener('input', e => {
+  const el = e.target; if (!el.dataset.plan) return;
+  const k = el.dataset.plan, v = parseFloat(String(el.value).replace(',', '.'));
+  if (v > 0) { S.plan[k] = { ...S.plan[k], h: v }; delete S.plan[k].est; }
+  else if (S.plan[k]) { delete S.plan[k].h; delete S.plan[k].est; if (!S.plan[k].g) delete S.plan[k]; }
+  el.parentElement.classList.remove('est'); el.parentElement.removeAttribute('title');
+  const b = el.nextElementSibling; if (b) b.hidden = !(v > 0);
+  save(); planTotals();
+});
+document.addEventListener('change', e => {
+  const el = e.target, f = el.dataset.f; if (!f) return;
+  const id = el.dataset.id, v = el.value, num = v === '' ? null : Math.max(0, +v);
+  let redraw = false;
+  switch (f) {
+    case 'class.name': {
+      const c = byId(S.classes, id), n = normClass(v);
+      if (!n || S.classes.some(x => x !== c && x.name === n)) { el.value = c.name; return toast('Такий клас уже є'); }
+      c.name = n; el.value = n; break;
+    }
+    case 'class.students': byId(S.classes, id).students = num; redraw = true; break;
+    case 'class.boys': byId(S.classes, id).boys = num; break;
+    case 'class.girls': byId(S.classes, id).girls = num; break;
+    case 'subj.name': if (v.trim()) byId(S.subjects, id).name = v.trim(); break;
+    case 'subj.split': byId(S.subjects, id).split = +v; redraw = true; break;
+    case 't.name': if (v.trim()) byId(S.teachers, id).name = v.trim(); break;
+    case 't.note': byId(S.teachers, id).note = v.trim(); break;
+    case 'ex.title': byId(S.extras, id).title = v.trim(); break;
+    case 'ex.h': byId(S.extras, id).h = num || 0; break;
+    case 'set.school': S.school = v.trim(); break;
+    case 'set.year': S.year = v.trim() || guessYear(); break;
+    case 'set.stavka': S.stavka = +v > 0 ? +v : 18; break;
+    case 'set.splitMin': S.splitMin = +v > 0 ? +v : 27; break;
+    case 'assign': if (v) S.assign[el.dataset.k] = v; else delete S.assign[el.dataset.k]; redraw = true; break;
+    case 'bulk.s': bulk.s = v; bulk.cls.clear(); return render();
+    case 'bulk.t': bulk.t = v; return;
+    case 'bulk.grp': bulk.grp = v; return;
+    case 'bulk.c': el.checked ? bulk.cls.add(id) : bulk.cls.delete(id); return;
+    case 'dist.cls': dist.cls = v; return render();
+    case 'dist.only': dist.only = el.checked; return render();
+  }
+  save();
+  if (redraw) { const y = scrollY; render(); scrollTo(0, y); }
+  else $('#schoolLbl').textContent = [S.school, S.year + ' н. р.'].filter(Boolean).join(' · ');
+});
+$('#fileXlsx').addEventListener('change', e => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) importFiles(fs); });
+$('#fileJson').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) openJsonFile(f); });
+addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dragging'); });
+addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('dragging'); });
+addEventListener('drop', e => {
+  e.preventDefault(); document.body.classList.remove('dragging');
+  const fs = [...(e.dataTransfer?.files || [])]; if (fs.length) importFiles(fs);
+});
+addEventListener('beforeprint', () => { if (TAB !== 'load') go('load'); });
+
+addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
+addEventListener('pagehide', () => flush());
+
+(async () => {
+  try {
+    const d = await kvGet('data');
+    if (valid(d)) S = d;
+    else {
+      /* перенесення з першої версії (дані в localStorage) */
+      let old = null; try { old = JSON.parse(localStorage.getItem(LS)); } catch (e) {}
+      if (valid(old)) { S = old; await kvPut('data', S); }
+    }
+    const last = (await listSnaps())[0];
+    if (!last || Date.now() - last.at > 30 * 60000) await snapshot('при відкритті');
+    DIR = await kvGet('dir') || null;
+    if (DIR) dirOk = await DIR.queryPermission({ mode: 'readwrite' }) === 'granted';
+    savedAt = S.updated || 0;
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  } catch (e) { saveErr = 'База даних недоступна — відкрийте програму в Chrome або Edge'; }
+  render();
+})();
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>

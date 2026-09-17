@@ -1,0 +1,7 @@
+# Дані школи ніколи не потрапляють у репозиторій
+*.json
+!manifest.webmanifest
+*.xlsx
+*.docx
+*.pdf
+*.csv
