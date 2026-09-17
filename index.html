@@ -390,6 +390,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /* окремі ключі — не перетинаються з журналом ФК */
 const LS = 'shkola-navantazhennya-v1';
+const VERSION = '2026-09-17';
 
 /* split: 0 — без поділу, 1 — ділиться при наповнюваності ≥ порогу, 2 — ділиться лише в 10–11 класах */
 const SUBJECTS = [
@@ -1103,7 +1104,7 @@ function render() {
   renderNav();
   $('#view').innerHTML = (V[TAB] || V.help)() + pageFoot();
   if (TAB === 'plan') planTotals();
-  if (TAB === 'settings') renderSnaps();
+  if (TAB === 'settings') { renderSnaps(); renderDiag(); }
   showSave();
 }
 function pageHead(title, lead, actions = '') {
@@ -1590,10 +1591,49 @@ V.settings = () => pageHead('Дані і копії', 'Усе зберігаєт
     <div><button class="btn danger" data-act="reset">${ic('trash')} Очистити всі дані</button></div>
   </section>
 </div>
+<section class="card"><header><h2>Перевірка програми</h2><span class="sp"></span><button class="btn small" data-act="copyDiag">${ic('copy')} Скопіювати для підтримки</button></header>
+  <p class="sub">Якщо на цьому комп’ютері щось не працює, подивіться, що тут позначено червоним.</p>
+  <div id="diag"><p class="muted">Перевірка…</p></div>
+</section>
 <section class="card"><header><h2>Точки відновлення</h2><span class="sp"></span><button class="btn small" data-act="snapNow">${ic('plus')} Створити зараз</button></header>
   <p class="sub">Створюються самі: при відкритті програми, перед завантаженням з Мрії, перед відновленням і очищенням. Зберігаються останні ${KEEP_SNAPS}.</p>
   <div id="snaps"><p class="muted">Завантаження…</p></div>
 </section>`;
+/* перевірка можливостей браузера: що працює на цьому ПК */
+function diagList() {
+  const ua = navigator.userAgent;
+  const name = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox' :
+    /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'інший браузер';
+  const v = (ua.match(/(?:Edg|OPR|Firefox|Chrome)\/(\d+)/) || [])[1] || '';
+  const sw = !('serviceWorker' in navigator) ? [false, 'браузер не підтримує']
+    : location.protocol !== 'https:' ? [false, 'працює лише на сайті, а не з файлу']
+    : navigator.serviceWorker.controller ? [true, 'увімкнено'] : [null, 'увімкнеться після перезапуску'];
+  return [
+    ['Браузер', [name === 'Chrome' || name === 'Edge', `${name} ${v}`.trim() + (name === 'Chrome' || name === 'Edge' ? '' : ' — краще Chrome або Edge')]],
+    ['Збереження даних (база)', [!saveErr, saveErr ? 'не працює: ' + saveErr : 'працює']],
+    ['Читання файлів з Мрії', [typeof DecompressionStream !== 'undefined', typeof DecompressionStream !== 'undefined' ? 'працює' : 'браузер застарий — оновіть Chrome або Edge']],
+    ['Копії в папку на диску', [canDir, canDir ? (DIR ? (dirOk ? `папка «${DIR.name}»` : 'потрібен дозвіл') : 'доступно, папку ще не вибрано') : 'недоступно в цьому браузері — робіть копії файлом']],
+    ['Робота без інтернету', sw],
+    ['Адреса', [location.protocol === 'https:', location.host || 'локальний файл']],
+    ['Версія програми', [true, VERSION]]
+  ];
+}
+async function renderDiag() {
+  const el = $('#diag'); if (!el) return;
+  const rows = diagList();
+  let mem = '';
+  try {
+    const e = await navigator.storage?.estimate?.();
+    if (e?.usage) mem = `${mb(e.usage)} з ${mb(e.quota)}`;
+  } catch (err) {}
+  if (mem) rows.push(['Зайнято місця', [true, mem]]);
+  const persisted = await navigator.storage?.persisted?.().catch(() => false);
+  rows.push(['Захист від очищення браузером', [!!persisted, persisted ? 'увімкнено' : 'не увімкнено — обов’язково робіть копії']]);
+  el.innerHTML = `<div class="tblwrap"><table class="tbl"><tbody>${rows.map(([t, [ok, txt]]) =>
+    `<tr><td style="width:280px">${esc(t)}</td><td><span class="pill ${ok === true ? 'ok' : ok === false ? 'bad' : 'warn'}">${ok === true ? ic('check') : ic('alert')} ${esc(txt)}</span></td></tr>`).join('')}</tbody></table></div>`;
+  el.dataset.text = rows.map(([t, [, txt]]) => `${t}: ${txt}`).join(' | ');
+}
+
 async function renderSnaps() {
   const el = $('#snaps'); if (!el) return;
   const all = await listSnaps().catch(() => []);
@@ -1814,6 +1854,13 @@ const ACT = {
     catch (e) { toast('Папка недоступна — виберіть її знову'); }
   },
   forgetDir: async () => { DIR = null; dirOk = false; await kvDel('dir'); render(); },
+  copyDiag: async () => {
+    const t = `Навантаження, перевірка ПК
+${$('#diag')?.dataset.text || ''}
+Дані: ${summary(S)}`;
+    try { await navigator.clipboard.writeText(t); toast('Скопійовано — надішліть цей текст'); }
+    catch (e) { prompt('Скопіюйте цей текст:', t); }
+  },
   snapNow: async () => { await snapshot('вручну'); renderSnaps(); toast('Точку відновлення створено'); },
   snapRestore: async el => {
     const s = (await listSnaps()).find(x => x.id === +el.dataset.id);
