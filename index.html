@@ -220,6 +220,10 @@ table.grid{border-collapse:separate;border-spacing:0;background:var(--surface);m
 .how{background:var(--raise);border-radius:10px;padding:12px 14px;font-size:13.5px;color:var(--ink2);display:flex;flex-direction:column;gap:6px}
 .how b{color:var(--ink)}
 .how code{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font:600 13px var(--body);white-space:nowrap}
+.search{display:flex;align-items:center;gap:4px;border:1px solid var(--line2);border-radius:9px;padding:0 6px 0 10px;background:var(--surface);min-width:260px}
+.search input{border:0;background:none;padding:6px 0;min-height:34px}
+.search input:focus{outline:none;box-shadow:none}
+.search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .pcin{display:flex;align-items:center;gap:6px}
 .pcin input{text-align:center}
 .pcin span{color:var(--muted);font-size:13px}
@@ -1001,6 +1005,7 @@ try { TAB = localStorage.getItem(LS + ':tab') || 'help'; } catch (e) {}
 if (!TABS.includes(TAB)) TAB = 'help';
 const V = {};
 const dist = { only: false, cls: '' }, bulk = { s: '', t: '', grp: 'free', cls: new Set() };
+let teacherQ = '';
 let planAll = false;
 
 function progress() {
@@ -1208,7 +1213,11 @@ V.plan = () => {
     const lvl = Math.max(0, ...G.map(c => estLevel(c, s))), anyEst = G.some(c => cellOf(c, s)?.est && hoursOf(c, s));
     const detail = differ ? G.map(c => `${esc(c.name.split('-')[1] || c.name)}${hoursOf(c, s) ? fmt(hoursOf(c, s)) : '—'}`).join(' · ') : '';
     const cl = differ && anyEst ? ' est2' : lvlCls(lvl);
-    return `<td class="pc"><div class="cell${cl}"${differ ? ' title="Класи паралелі мають різну кількість годин. Якщо має бути однаково — впишіть правильне число (запишеться в усі класи). Якщо різниця правильна (напр. профільний клас) — «лишити як є»."' : ''}>
+    /* пояснення: по одному рядку на клас паралелі + що робити, якщо числа різні */
+    const why = [...G.filter(c => hoursOf(c, s)).map(c => cellWhy(c, s).split('\n')[0]),
+      differ ? 'Класи паралелі розходяться. Впишіть правильне число — воно запишеться в усі класи. Якщо різниця правильна (профільний клас) — «лишити як є».' : ''].filter(Boolean).join('\n');
+    const changed = G.some(c => { const x = cellOf(c, s); return x?.imp && x.h !== x.imp; });
+    return `<td class="pc"><div class="cell${cl}"${why ? ` title="${esc(why)}"` : ''}>${changed ? `<button class="undo-cell" data-act="parReset" data-k="${g}|${s.id}" title="Повернути числа, які були в журналах">${ic('restore')}</button>` : ''}
       <input type="number" min="0" max="40" step="0.5" placeholder="${differ ? 'різне' : ' '}" data-par="${g}|${s.id}" value="${!differ && set[0] ? set[0] : ''}" aria-label="${esc(s.name)}, ${g} клас">
       ${differ ? `<span class="pdiff${anyEst ? '' : ' ok'}">${detail}</span>${anyEst ? `<button class="okbtn" data-act="parOk" data-k="${g}|${s.id}" title="У класах паралелі справді різна кількість годин — залишити як є">${ic('check')} лишити як є</button>` : ''}` : anyEst ? `<button class="okbtn" data-act="parOk" data-k="${g}|${s.id}" title="Число правильне — підтвердити для всіх класів паралелі">${ic('check')} так</button>` : set[0] ? `<span class="pdone">${ic('check')}</span>` : '<span class="pdone"></span>'}
     </div></td>`;
@@ -1245,10 +1254,12 @@ ${p0.est ? `<section class="card howcheck">
   <div class="legend"><span><i class="sw"></i>звірено</span><span><i class="sw est1"></i>з журналу — упевнено</span><span><i class="sw est"></i>перевірте</span>${planMode === 'class' ? '<span><i class="sw grp">2 групи</i>клас ділиться</span>' : ''}</div>
   ${subs.length ? `<div class="gridwrap">${grid}</div>` : `<div class="empty">${ic('check')}<b>Нічого перевіряти</b><p>Підозрілих годин нема.</p></div>`}
   ${how('Як рахуються години',
-    '<b>У клітинці</b> — години на тиждень для одного класу. Наведіть мишу на число: буде видно, з якого журналу воно взялося і скільки уроків було по тижнях.',
+    planMode === 'grade'
+      ? '<b>У клітинці</b> — години на тиждень для всієї паралелі. Наведіть мишу на число: буде видно, з яких журналів воно взялося і скільки уроків було по тижнях у кожному класі.'
+      : '<b>У клітинці</b> — години на тиждень для одного класу. Наведіть мишу на число: буде видно, з якого журналу воно взялося і скільки уроків було по тижнях.',
     `<b>Годин у класі</b> = сума всіх предметів класу.`,
     `<b>Годин вчителям</b> = години × кількість груп. Клас з двома групами дає вчителям удвічі більше годин: <code>3 год × 2 групи = 6 год</code>.`,
-    '<b>Кружечок зі стрілкою</b> над клітинкою повертає число, яке було в журналі, якщо ви змінили його помилково.')}
+    '<b>Кружечок зі стрілкою</b> з’являється над клітинкою, тільки якщо ви змінили число вручну. Він повертає те, що було в журналі.')}
   <p class="hint">${planMode === 'grade' ? 'Число, вписане для паралелі, записується в усі її класи. Групи налаштовуються в режимі «По класах».' : 'Кнопка під числом — поділ: «весь клас» або «2 групи». Натисніть, щоб змінити вручну. Кожна група дає вчителю повні години предмета.'}</p>
 </section>
 <details class="more"><summary>${ic('plan')} Предмети <small>— назви, порядок, які предмети діляться на групи</small></summary><div class="in">
@@ -1284,7 +1295,10 @@ function planTotals() {
 /* ---------- 3. Вчителі ---------- */
 const meter = h => { const st = status(h)[1], max = S.stavka * 1.5; return `<div class="meter" title="${fmt(h)} год із ${S.stavka} (ставка)"><i class="${st}" style="width:${Math.min(100, h / max * 100)}%"></i><em style="left:${100 / 1.5}%"></em></div>`; };
 V.teachers = () => {
-  const L = loads();
+  const all = loads(), needle = teacherQ.trim().toLowerCase();
+  const L = needle ? all.filter(x => (x.t.name + ' ' + (x.t.note || '')).toLowerCase().includes(needle) ||
+    bySubject(x).some(s => s.s.name.toLowerCase().includes(needle)) ||
+    x.rows.some(u => u.c.name.toLowerCase().includes(needle))) : all;
   const list = L.length ? `<div class="tblwrap"><table class="tbl">
     <thead><tr><th>ПІБ і посада</th><th style="width:170px">Навантаження</th><th style="width:110px">Доплати</th><th style="width:48px"></th></tr></thead>
     <tbody>${L.map(x => `<tr><td><div style="display:flex;flex-direction:column;gap:6px"><input data-f="t.name" data-id="${x.t.id}" value="${esc(x.t.name)}" style="font-weight:600" aria-label="ПІБ">
@@ -1301,7 +1315,9 @@ ${how('Як рахується навантаження вчителя',
   '<b>Доплати, %</b> — класне керівництво й інші доплати у відсотках ставки. Наведіть мишу на число, щоб побачити, з чого воно склалося.',
   'Наведіть мишу на години — покаже по предметах і класах.')}
 <div class="split">
-  <section class="card"><header><h2>Список вчителів</h2><span class="pill">${L.length}</span></header>${list}</section>
+  <section class="card"><header><h2>Список вчителів</h2><span class="pill">${needle ? `${L.length} з ${all.length}` : all.length}</span><span class="sp"></span>
+    <div class="search"><input id="tSearch" value="${esc(teacherQ)}" placeholder="Пошук: прізвище, предмет або клас" aria-label="Пошук вчителя">${teacherQ ? `<button class="x plain" data-act="clearTSearch" title="Очистити">${ic('x')}</button>` : ''}</div></header>
+    ${needle && !L.length ? `<div class="empty">${ic('teacher')}<b>Нікого не знайдено</b><p>За запитом «${esc(teacherQ)}» вчителів нема. Спробуйте прізвище, предмет або клас.</p></div>` : list}</section>
   <div class="stack">
     <section class="card"><header><h3>${ic('plus')} Додати вручну</h3></header>
       <label class="field">ПІБ — кожен з нового рядка<textarea id="newTeachers" placeholder="Іваненко Ірина Петрівна&#10;Петренко Олег Васильович"></textarea></label>
@@ -1513,6 +1529,17 @@ const ACT = {
   },
   planAll: el => { planAll = el.dataset.v === '1'; planWarnOnly = false; render(); },
   planWarn: () => { planWarnOnly = !planWarnOnly; render(); },
+  clearTSearch: () => { teacherQ = ''; render(); setTimeout(() => $('#tSearch')?.focus(), 0); },
+  parReset: el => {
+    const [g, sid] = el.dataset.k.split('|');
+    let n = 0;
+    for (const c of S.classes) {
+      if (gradeOf(c.name) !== +g) continue;
+      const p = S.plan[c.id + '|' + sid];
+      if (p?.imp && p.h !== p.imp) { p.h = p.imp; delete p.est; n++; }
+    }
+    save(); keepScroll(render); toast(n ? `Повернуто з журналу: ${n}` : 'Нічого повертати');
+  },
   cellReset: el => {
     const p = S.plan[el.dataset.k];
     if (!p?.imp) return;
@@ -1716,7 +1743,14 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'newSubj') ACT.addSubj();
 });
 document.addEventListener('input', e => {
-  const el = e.target; if (!el.dataset.plan) return;
+  const el = e.target;
+  if (el.id === 'tSearch') {
+    teacherQ = el.value;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { const pos = el.selectionStart; render(); const n = $('#tSearch'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 200);
+    return;
+  }
+  if (!el.dataset.plan) return;
   const k = el.dataset.plan, v = parseFloat(String(el.value).replace(',', '.'));
   if (v > 0) { S.plan[k] = { ...S.plan[k], h: v }; delete S.plan[k].est; }
   else if (S.plan[k]) { delete S.plan[k].h; delete S.plan[k].est; if (!S.plan[k].g) delete S.plan[k]; }
