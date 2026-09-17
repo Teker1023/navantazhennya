@@ -1540,8 +1540,12 @@ addEventListener('drop', e => {
 document.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details[data-bulk]')) bulk.open = e.target.open; }, true);
 addEventListener('beforeprint', () => { if (TAB !== 'load') go('load'); });
 
-/* якщо logo.gif у папці нема — лишається стандартний значок */
-$('#logoImg').addEventListener('error', e => e.target.remove());
+/* логотип: перший файл, який знайдеться поруч із програмою; якщо жодного — лишається стандартний значок */
+const LOGOS = ['logo.gif', 'logo.png', 'logo.jpg', 'logo.jpeg', 'logo.webp', 'logo.svg'];
+$('#logoImg').addEventListener('error', e => {
+  const i = LOGOS.indexOf(e.target.getAttribute('src')) + 1;
+  if (i && i < LOGOS.length) e.target.src = LOGOS[i]; else e.target.remove();
+});
 
 addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 addEventListener('pagehide', () => flush());
