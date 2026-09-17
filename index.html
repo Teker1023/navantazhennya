@@ -1436,7 +1436,7 @@ function payBlocks() {
     : `<div class="tblwrap"><table class="tbl"><thead><tr><th>Клас</th><th>Класний керівник</th><th>Розмір</th></tr></thead><tbody>${rows}</tbody></table></div>`}
 </section>
 <section class="card">
-  <header><h2>Інші доплати</h2>${S.pays.length ? `<span class="pill">${hasQ('pays') ? `${P.length} з ${S.pays.length}` : S.pays.length}</span>` : ''}<span class="sp"></span>${S.pays.length ? searchBox('pays', 'Пошук: вчитель, вид доплати') : ''}${S.pays.length ? '' : `<button class="btn small" data-act="suggestPays">${ic('check')} Підказати перевірку робіт</button>`}</header>
+  <header><h2>Інші доплати</h2>${S.pays.length ? `<span class="pill">${hasQ('pays') ? `${P.length} з ${S.pays.length}` : S.pays.length}</span>` : ''}<span class="sp"></span>${S.pays.length ? searchBox('pays', 'Пошук: вчитель, вид доплати') : ''}${S.pays.length ? '' : `<button class="btn small" data-act="suggestPays" title="Програма подивиться, які предмети веде кожен вчитель, і додасть доплату за перевірку письмових робіт за нормою">${ic('plus')} Порахувати перевірку робіт</button>`}</header>
   <p class="sub">Перевірка письмових робіт, завідування кабінетом чи майстернею, методоб’єднання тощо. Відсотки — від ставки, у межах, які встановлює директор за погодженням з профкомом. Перевірка робіт рахується пропорційно до годин: норма × години ÷ ${S.stavka}.</p>
   <div class="row">
     <label class="field">Вчитель<select id="payT">${tOpt('')}</select></label>
@@ -1445,7 +1445,12 @@ function payBlocks() {
     <button class="btn" data-act="addPay">${ic('plus')} Додати</button>
   </div>
   ${list}
-  ${S.pays.length ? `<div><button class="btn small ghost" data-act="suggestPays">${ic('plus')} Підказати перевірку робіт за розподілом</button></div>` : ''}
+  <div><button class="btn small ghost" data-act="suggestPays" title="Додасть доплату тим, у кого її ще нема, і оновить години в наявних">${ic('plus')} Порахувати перевірку робіт за розподілом</button></div>
+  ${how('За що платять за перевірку письмових робіт (Інструкція № 102)',
+    '<b>1–4 класи</b> — 15 % за всі предмети.',
+    '<b>Мова й література</b> — 20 %. <b>Математика, алгебра, геометрія</b> — 15 %. <b>Іноземна мова, креслення</b> — 10 %.',
+    'За інші предмети (фізкультура, музика, інформатика, історія тощо) доплата за перевірку робіт <b>не передбачена</b>.',
+    `Сума рахується пропорційно до годин: <code>норма × години ÷ ${S.stavka}</code>. Наприклад: <code>20 % × 25 год ÷ ${S.stavka} = 27,78 %</code>.`)}
 </section>`;
 }
 
@@ -1767,7 +1772,11 @@ const ACT = {
         n++;
       }
     }
-    save(true); render(); toast(n ? `Додано доплат: ${n} — перевірте розміри` : 'Нових доплат за перевірку робіт нема');
+    save(true); render();
+    if (n) return toast(`Додано доплат: ${n} — перевірте розміри`);
+    const teach = loads().some(x => x.rows.length);
+    toast(!teach ? 'Спершу призначте вчителів на кроці «Розподіл»'
+      : 'Нічого додавати: за предмети цих вчителів доплата за перевірку робіт не передбачена, або вона вже є');
   },
   bulkAll: () => {
     const bs = byId(S.subjects, bulk.s), ids = cls().filter(c => hoursOf(c, bs)).map(c => c.id);
