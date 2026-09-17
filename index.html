@@ -210,6 +210,9 @@ table.grid{border-collapse:separate;border-spacing:0;background:var(--surface);m
 .okbtn{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line2);background:var(--surface);border-radius:99px;font-size:11.5px;font-weight:600;line-height:1;padding:3px 9px 3px 6px;color:var(--ink2)}
 .okbtn svg.i{width:12px;height:12px;stroke-width:2.6;color:var(--ok)}
 .okbtn:hover{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.pcin{display:flex;align-items:center;gap:6px}
+.pcin input{text-align:center}
+.pcin span{color:var(--muted);font-size:13px}
 .pdiff{font-size:11.5px;font-weight:600;color:var(--warn);white-space:nowrap}
 .pdiff.ok{color:var(--muted);font-weight:500}
 .pdone{height:20px;display:grid;place-items:center;color:var(--ok)}
@@ -388,9 +391,56 @@ function guessYear() { const d = new Date(), y = d.getMonth() >= 7 ? d.getFullYe
 function blank() {
   return { v: 1, school: '', year: guessYear(), stavka: 18, splitMin: 27, classes: [],
     subjects: SUBJECTS.map(([name, split]) => ({ id: uid(), name, split })),
-    teachers: [], plan: {}, assign: {}, extras: [], updated: 0 };
+    teachers: [], plan: {}, assign: {}, extras: [], homeroom: {}, pays: [], updated: 0 };
 }
-function valid(d) { return d && d.v === 1 && Array.isArray(d.classes) && Array.isArray(d.subjects) && Array.isArray(d.teachers); }
+function valid(d) {
+  if (!d || d.v !== 1 || !Array.isArray(d.classes) || !Array.isArray(d.subjects) || !Array.isArray(d.teachers)) return false;
+  /* дані, збережені до появи доплат */
+  if (!d.homeroom) d.homeroom = {};
+  if (!Array.isArray(d.pays)) d.pays = [];
+  return true;
+}
+
+/* ---------- доплати за Інструкцією про порядок обчислення заробітної плати працівників освіти
+   (наказ МОН від 15.04.1993 № 102, розділ «Доплати»). Відсотки — від ставки (посадового окладу).
+   У класах, де менше 12 учнів, класне керівництво і перевірка робіт оплачуються в половинному розмірі.
+   Конкретний розмір у межах вилки встановлює директор за погодженням з профспілковим комітетом. ---------- */
+const PAY_KINDS = [
+  { k: 'papers', t: 'Перевірка письмових робіт', min: 10, max: 20, half: true, note: 'предмет і класи' },
+  { k: 'cabinet', t: 'Завідування навчальним кабінетом, лабораторією, спортзалом', min: 10, max: 15, note: 'який кабінет' },
+  { k: 'workshop', t: 'Завідування майстернею або кабінетом інформатики', min: 15, max: 20, note: 'яка майстерня' },
+  { k: 'plot', t: 'Завідування навчально-дослідною ділянкою', min: 10, max: 15, note: '' },
+  { k: 'library', t: 'Завідування бібліотекою', min: 5, max: 15, note: '' },
+  { k: 'method', t: 'Керівництво методичним об’єднанням', min: 10, max: 15, note: 'яке об’єднання' },
+  { k: 'inclusive', t: 'Робота в інклюзивному класі', min: 20, max: 20, note: 'який клас' },
+  { k: 'pc', t: 'Обслуговування комп’ютерної техніки', min: 10, max: 15, note: '' },
+  { k: 'site', t: 'Ведення вебсайту закладу', min: 10, max: 10, note: '' },
+  { k: 'other', t: 'Інше', min: 0, max: 100, note: 'за що саме' }
+];
+const payKind = k => PAY_KINDS.find(x => x.k === k) || PAY_KINDS[PAY_KINDS.length - 1];
+/* перевірка письмових робіт: 1–4 кл. усі предмети 15 %, 5–11 кл. мова й література 20 %, математика 15 %, іноземна та креслення 10 % */
+function papersPct(subjName, grade) {
+  if (grade && grade <= 4) return 15;
+  const n = normSubj(subjName);
+  if (/мова|літератур/.test(n) && !/іноземн|англ|німец|франц|іспан|польськ/.test(n)) return 20;
+  if (/математик|алгебр|геометр/.test(n)) return 15;
+  if (/іноземн|англ|німец|франц|іспан|польськ|креслен/.test(n)) return 10;
+  return 0;
+}
+/* класне керівництво: 1–4 кл. 20 %, 5–11 кл. 25 %; у класі до 12 учнів — половина */
+function homeroomPct(c) {
+  const base = gradeOf(c.name) <= 4 ? 20 : 25;
+  return c.students && c.students < 12 ? base / 2 : base;
+}
+const paysOf = t => S.pays.filter(p => p.teacherId === t.id);
+/* Перевірка письмових робіт оплачується пропорційно до годин з цих предметів:
+   норма (%) × години / ставка. Решта доплат — фіксований відсоток ставки. */
+const payPct = p => p.h ? (+p.pct || 0) * p.h / S.stavka : (+p.pct || 0);
+const homeroomOf = t => S.classes.filter(c => S.homeroom[c.id] === t.id);
+function payTotal(t) {
+  return homeroomOf(t).reduce((a, c) => a + (+S.homeroom[c.id + ':pct'] || homeroomPct(c)), 0) +
+    paysOf(t).reduce((a, p) => a + payPct(p), 0);
+}
 
 let S = blank();
 
@@ -833,13 +883,21 @@ function download(blob, name) {
 const r2 = n => Math.round(n * 100) / 100;
 function exportXlsx() {
   const C = cls(), L = loads(), U = units();
-  const summary = [['№', 'Вчитель', 'Посада / примітка', 'Предмети', 'Годин на тиждень', 'Ставок', 'Стан']];
+  const summary = [['№', 'Вчитель', 'Посада / примітка', 'Предмети', 'Годин на тиждень', 'Ставок', 'Класне керівництво', 'Доплати, % ставки', 'Стан']];
+  const pays = [['Вчитель', 'Вид доплати', 'Деталі', 'Розмір, % ставки', 'Норма за Інструкцією № 102']];
   const detail = [['Вчитель', 'Предмет / вид роботи', 'Клас', 'Група', 'Годин на тиждень']];
   const matrix = [['Вчитель', 'Предмет', ...C.map(c => c.name), 'Разом']];
   const bold = new Set();
   L.forEach((x, i) => {
     const subs = bySubject(x);
-    summary.push([i + 1, x.t.name, x.t.note || '', [...subs.map(s => s.s.name), ...x.extra.map(e => e.title)].join(', '), r2(x.total), r2(x.total / S.stavka), status(x.total)[0]]);
+    const hr = homeroomOf(x.t), hrPct = hr.reduce((a, c) => a + (+S.homeroom[c.id + ':pct'] || homeroomPct(c)), 0);
+    summary.push([i + 1, x.t.name, x.t.note || '', [...subs.map(s => s.s.name), ...x.extra.map(e => e.title)].join(', '), r2(x.total), r2(x.total / S.stavka),
+      hr.map(c => c.name).join(', '), r2(payTotal(x.t)) || '', status(x.total)[0]]);
+    hr.forEach(c => pays.push([x.t.name, 'Класне керівництво', c.name + (c.students ? `, ${c.students} учнів` : ''), r2(+S.homeroom[c.id + ':pct'] || homeroomPct(c)), gradeOf(c.name) <= 4 ? '20 % (до 12 учнів — 10 %)' : '25 % (до 12 учнів — 12,5 %)']));
+    paysOf(x.t).forEach(p => {
+      const k = payKind(p.kind);
+      pays.push([x.t.name, k.t, p.note + (p.h ? ` (${r2(p.h)} год)` : ''), r2(payPct(p)), k.min === k.max ? k.min + ' %' : k.min + '–' + k.max + ' %']);
+    });
     x.rows.forEach(u => detail.push([x.t.name, u.s.name, u.c.name, u.g > 1 ? u.i + 1 : '', u.h]));
     x.extra.forEach(e => detail.push([x.t.name, e.title, '', '', +e.h || 0]));
     subs.forEach(s => matrix.push([x.t.name, s.s.name, ...C.map(c => r2(s.parts.filter(p => p.u.c === c).reduce((a, p) => a + p.u.h, 0)) || ''), r2(s.h)]));
@@ -856,7 +914,8 @@ function exportXlsx() {
   const un = [['Клас', 'Предмет', 'Група', 'Годин на тиждень']];
   U.filter(u => !u.t).forEach(u => un.push([u.c.name, u.s.name, u.g > 1 ? u.i + 1 : '', u.h]));
   const sheets = [
-    { name: 'Підсумок', rows: summary, widths: [5, 34, 22, 60, 16, 9, 16] },
+    { name: 'Підсумок', rows: summary, widths: [5, 34, 22, 60, 16, 9, 20, 18, 16] },
+    { name: 'Доплати', rows: pays, widths: [34, 46, 34, 18, 28] },
     { name: 'Розподіл', rows: detail, widths: [34, 30, 8, 7, 16] },
     { name: 'Зведена', rows: matrix, widths: [34, 30, ...C.map(() => 7), 9], bold },
     { name: 'Навчальний план', rows: plan, widths: [32, ...C.map(() => 11), 18, 30] },
@@ -1008,6 +1067,7 @@ V.help = () => {
     <div class="fact"><b>${S.stavka} год = 1 ставка</b><span>Навантаження вчителя — сума годин на тиждень у всіх його класах і групах.</span></div>
     <div class="fact"><b>Групи — за учнями</b><span>Два журнали одного предмета в класі з різними дітьми — це дві групи, кожна зі своїм вчителем.</span></div>
     <div class="fact"><b>Години — підказка</b><span>Рахуються за датами уроків у журналі. Звірте їх з навчальним планом школи.</span></div>
+    <div class="fact"><b>Доплати за нормою</b><span>Класне керівництво 20 % (1–4 кл.) і 25 % (5–11 кл.), перевірка робіт, завідування кабінетом — за Інструкцією № 102.</span></div>
     <div class="fact"><b>Прізвища не зберігаються</b><span>Лише кількість учнів і незворотні коди для порівняння списків. Дані не виходять за межі ПК.</span></div>
   </div>
 </section>`;
@@ -1165,10 +1225,11 @@ const meter = h => { const st = status(h)[1], max = S.stavka * 1.5; return `<div
 V.teachers = () => {
   const L = loads();
   const list = L.length ? `<div class="tblwrap"><table class="tbl">
-    <thead><tr><th>ПІБ і посада</th><th style="width:170px">Навантаження</th><th style="width:48px"></th></tr></thead>
+    <thead><tr><th>ПІБ і посада</th><th style="width:170px">Навантаження</th><th style="width:110px">Доплати</th><th style="width:48px"></th></tr></thead>
     <tbody>${L.map(x => `<tr><td><div style="display:flex;flex-direction:column;gap:6px"><input data-f="t.name" data-id="${x.t.id}" value="${esc(x.t.name)}" style="font-weight:600" aria-label="ПІБ">
       <input data-f="t.note" data-id="${x.t.id}" value="${esc(x.t.note || '')}" placeholder="посада, напр. вчитель фізкультури" aria-label="Посада" style="min-height:30px;font-size:13px"></div></td>
       <td><div class="loadcell"><span><b>${fmt(x.total)} год</b> <span class="muted">· ${fmt(x.total / S.stavka)} ст.</span></span>${meter(x.total)}</div></td>
+      <td>${payTotal(x.t) ? `<span class="pill blue">+${fmt(payTotal(x.t))} %</span>` : '<span class="muted">—</span>'}</td>
       <td><button class="x" data-act="delTeacher" data-id="${x.t.id}" title="Видалити">${ic('trash')}</button></td></tr>`).join('')}</tbody></table></div>
     <p class="hint">Смужка — години відносно ставки: риска = ${S.stavka} год (1 ставка).</p>`
     : `<div class="empty">${ic('teacher')}<b>Вчителів ще нема</b><p>Вони з’являться самі, коли завантажите журнали з галочкою «Планування». Або додайте вручну праворуч.</p></div>`;
@@ -1189,8 +1250,49 @@ V.teachers = () => {
         <td style="width:44px;padding-left:0"><button class="x" data-act="delExtra" data-id="${e.id}" title="Видалити">${ic('trash')}</button></td></tr>`).join('')}</tbody></table></div>` : ''}
     </section>
   </div>
-</div>`;
+</div>
+${payBlocks()}`;
 };
+
+/* класне керівництво і доплати за Інструкцією № 102 */
+function payBlocks() {
+  const T = teachersSorted(), C = cls();
+  if (!T.length) return '';
+  const tOpt = sel => `<option value="">— нема —</option>` + T.map(t => `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}</option>`).join('');
+  const rows = C.map(c => {
+    const tid = S.homeroom[c.id] || '', pct = S.homeroom[c.id + ':pct'] ?? homeroomPct(c);
+    return `<tr><td><span class="cellname">${esc(c.name)}</span><span class="cellsub">${c.students ?? '?'} учнів${c.students && c.students < 12 ? ' · до 12 учнів, половинний розмір' : ''}</span></td>
+      <td><select data-f="hr.t" data-id="${c.id}">${tOpt(tid)}</select></td>
+      <td style="width:110px">${tid ? `<div class="pcin"><input type="number" min="0" max="100" step="0.5" data-f="hr.pct" data-id="${c.id}" value="${fmt(pct)}"><span>%</span></div>` : '<span class="muted">—</span>'}</td></tr>`;
+  }).join('');
+  const list = S.pays.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:230px">Вчитель</th><th>Вид доплати</th><th style="width:230px">Деталі</th><th style="width:110px">Розмір</th><th style="width:48px"></th></tr></thead><tbody>` +
+    S.pays.map(p => {
+      const k = payKind(p.kind);
+      return `<tr><td>${esc(byId(S.teachers, p.teacherId)?.name || '?')}</td>
+        <td>${esc(k.t)}<span class="cellsub">за нормою ${k.min === k.max ? k.min : k.min + '–' + k.max} %</span></td>
+        <td><input data-f="pay.note" data-id="${p.id}" value="${esc(p.note || '')}" placeholder="${esc(k.note || '')}"></td>
+        <td><div class="pcin"><input type="number" min="0" max="100" step="0.5" data-f="pay.pct" data-id="${p.id}" value="${fmt(p.pct)}"><span>%</span></div>${p.h ? `<span class="cellsub">× ${fmt(p.h)} год / ${S.stavka} = <b>${fmt(payPct(p))} %</b></span>` : ''}</td>
+        <td><button class="x" data-act="delPay" data-id="${p.id}" title="Видалити">${ic('trash')}</button></td></tr>`;
+    }).join('') + '</tbody></table></div>' : '<p class="hint">Доплат ще нема.</p>';
+  return `
+<section class="card">
+  <header><h2>Класне керівництво</h2><span class="sp"></span><span class="pill">${C.filter(c => S.homeroom[c.id]).length} з ${C.length}</span></header>
+  <p class="sub">Розмір за Інструкцією № 102: 1–4 класи — 20 %, 5–11 класи — 25 % ставки. У класі, де менше 12 учнів, — половина. Число можна змінити.</p>
+  ${C.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Клас</th><th>Класний керівник</th><th>Розмір</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="hint">Класів ще нема.</p>'}
+</section>
+<section class="card">
+  <header><h2>Інші доплати</h2><span class="sp"></span>${S.pays.length ? '' : `<button class="btn small" data-act="suggestPays">${ic('check')} Підказати перевірку робіт</button>`}</header>
+  <p class="sub">Перевірка письмових робіт, завідування кабінетом чи майстернею, методоб’єднання тощо. Відсотки — від ставки, у межах, які встановлює директор за погодженням з профкомом. Перевірка робіт рахується пропорційно до годин: норма × години ÷ ${S.stavka}.</p>
+  <div class="row">
+    <label class="field">Вчитель<select id="payT">${tOpt('')}</select></label>
+    <label class="field">Вид<select id="payKind">${PAY_KINDS.map(k => `<option value="${k.k}">${esc(k.t)} · ${k.min === k.max ? k.min : k.min + '–' + k.max} %</option>`).join('')}</select></label>
+    <label class="field s" style="flex-basis:96px">Розмір, %<input id="payPct" type="number" min="0" max="100" step="0.5"></label>
+    <button class="btn" data-act="addPay">${ic('plus')} Додати</button>
+  </div>
+  ${list}
+  ${S.pays.length ? `<div><button class="btn small ghost" data-act="suggestPays">${ic('plus')} Підказати перевірку робіт за розподілом</button></div>` : ''}
+</section>`;
+}
 
 /* ---------- 4. Розподіл ---------- */
 V.dist = () => {
@@ -1251,6 +1353,7 @@ V.load = () => {
     return `<tr><td class="num muted">${n + 1}</td><td><span class="cellname">${esc(x.t.name)}</span>${x.t.note ? `<span class="cellsub">${esc(x.t.note)}</span>` : ''}</td>
       <td>${what || '<span class="muted">нічого не призначено</span>'}</td>
       <td><div class="loadcell"><span><b>${fmt(x.total)} год</b> <span class="muted">· ${fmt(x.total / S.stavka)} ст.</span></span>${meter(x.total)}</div></td>
+      <td>${payCell(x.t)}</td>
       <td><span class="pill ${cl}">${st}</span></td></tr>`;
   }).join('');
   return pageHead('Навантаження вчителів', `${S.school ? esc(S.school) + ', ' : ''}${esc(S.year)} н. р. · Ставка — ${S.stavka} год на тиждень.`,
@@ -1263,10 +1366,18 @@ V.load = () => {
 </div>
 ${freeH ? `<div class="notice warn noprint">${ic('alert')}<span class="grow"><b>${fmt(freeH)} год ще без вчителя:</b> ${free.slice(0, 6).map(u => `${esc(u.c.name)} ${esc(u.s.name)}${u.g > 1 ? ' гр.' + (u.i + 1) : ''}`).join(', ')}${free.length > 6 ? ` і ще ${free.length - 6}` : ''}.</span><button class="btn small primary" data-go="dist">До розподілу</button></div>` : ''}
 <section class="card">
-  <div class="tblwrap"><table class="tbl"><thead><tr><th style="width:44px">№</th><th style="width:230px">Вчитель</th><th>Що веде (клас · годин)</th><th style="width:190px">Навантаження</th><th style="width:130px">Стан</th></tr></thead>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th style="width:44px">№</th><th style="width:210px">Вчитель</th><th>Що веде (клас · годин)</th><th style="width:170px">Навантаження</th><th style="width:210px">Класне керівництво і доплати</th><th style="width:120px">Стан</th></tr></thead>
   <tbody>${body}</tbody></table></div>
 </section>`;
 };
+
+function payCell(t) {
+  const hr = homeroomOf(t), ps = paysOf(t), tot = payTotal(t);
+  if (!tot) return '<span class="muted">—</span>';
+  const parts = [...hr.map(c => `<span class="chip">кл. кер. ${esc(c.name)} · <b>${fmt(S.homeroom[c.id + ':pct'] ?? homeroomPct(c))} %</b></span>`),
+    ...ps.map(p => `<span class="chip" title="${esc(payKind(p.kind).t)}${p.note ? ' — ' + esc(p.note) : ''}${p.h ? ` (${fmt(p.pct)} % × ${fmt(p.h)} год / ${S.stavka})` : ''}">${esc(payKind(p.kind).t.split(' ').slice(0, 2).join(' '))} · <b>${fmt(payPct(p))} %</b></span>`)];
+  return `<div class="teach">${parts.join('')}</div><div class="cellsub">разом +${fmt(tot)} %</div>`;
+}
 
 /* ---------- Дані і копії ---------- */
 V.settings = () => pageHead('Дані і копії', 'Усе зберігається на цьому комп’ютері автоматично. Тут — дані школи, резервні копії та відновлення.') + `
@@ -1342,6 +1453,8 @@ const ACT = {
     if (!confirm(`Видалити клас ${c.name} разом з його годинами і розподілом?`)) return;
     S.classes = S.classes.filter(x => x !== c);
     for (const m of [S.plan, S.assign]) for (const k in m) if (k.startsWith(c.id + '|')) delete m[k];
+    delete S.homeroom[c.id]; delete S.homeroom[c.id + ':pct'];
+    S.pays = S.pays.filter(p => p.classId !== c.id);
     save(); render();
   },
   cycleG: el => {
@@ -1399,6 +1512,8 @@ const ACT = {
     S.teachers = S.teachers.filter(x => x !== t);
     for (const k in S.assign) if (S.assign[k] === t.id) delete S.assign[k];
     S.extras = S.extras.filter(e => e.teacherId !== t.id);
+    S.pays = S.pays.filter(x => x.teacherId !== t.id);
+    for (const k in S.homeroom) if (S.homeroom[k] === t.id) delete S.homeroom[k];
     save(); render();
   },
   addExtra: () => {
@@ -1408,6 +1523,35 @@ const ACT = {
     save(); render();
   },
   delExtra: el => { S.extras = S.extras.filter(e => e.id !== el.dataset.id); save(); render(); },
+  addPay: () => {
+    const teacherId = $('#payT').value, kind = $('#payKind').value, k = payKind(kind);
+    const pct = parseFloat(($('#payPct').value || '').replace(',', '.')) || k.min;
+    if (!teacherId) return toast('Виберіть вчителя');
+    S.pays.push({ id: uid(), teacherId, kind, note: '', pct });
+    save(); render();
+  },
+  delPay: el => { S.pays = S.pays.filter(p => p.id !== el.dataset.id); save(); render(); },
+  suggestPays: () => {
+    /* перевірка письмових робіт — за предметами, які вчитель уже веде */
+    let n = 0;
+    for (const L of loads()) {
+      const seen = new Map();
+      for (const u of L.rows) {
+        const pct = papersPct(u.s.name, gradeOf(u.c.name));
+        if (!pct) continue;
+        if (!seen.has(pct)) seen.set(pct, { pct, h: 0, subj: new Set() });
+        const x = seen.get(pct); x.h += u.h; x.subj.add(u.s.name);
+      }
+      for (const x of seen.values()) {
+        const note = [...x.subj].join(', ');
+        const old = S.pays.find(p => p.teacherId === L.t.id && p.kind === 'papers' && p.pct === x.pct);
+        if (old) { old.note = note; old.h = x.h; continue; }
+        S.pays.push({ id: uid(), teacherId: L.t.id, kind: 'papers', note, pct: x.pct, h: x.h });
+        n++;
+      }
+    }
+    save(); render(); toast(n ? `Додано доплат: ${n} — перевірте розміри` : 'Нових доплат за перевірку робіт нема');
+  },
   bulkAll: () => {
     const bs = byId(S.subjects, bulk.s), ids = cls().filter(c => hoursOf(c, bs)).map(c => c.id);
     const allOn = ids.every(id => bulk.cls.has(id));
@@ -1514,6 +1658,10 @@ document.addEventListener('change', e => {
     case 't.note': byId(S.teachers, id).note = v.trim(); break;
     case 'ex.title': byId(S.extras, id).title = v.trim(); break;
     case 'ex.h': byId(S.extras, id).h = num || 0; break;
+    case 'hr.t': { if (v) S.homeroom[id] = v; else { delete S.homeroom[id]; delete S.homeroom[id + ':pct']; } redraw = true; break; }
+    case 'hr.pct': S.homeroom[id + ':pct'] = num ?? homeroomPct(byId(S.classes, id)); redraw = true; break;
+    case 'pay.note': byId(S.pays, id).note = v.trim(); break;
+    case 'pay.pct': byId(S.pays, id).pct = num || 0; redraw = true; break;
     case 'set.school': S.school = v.trim(); break;
     case 'set.year': S.year = v.trim() || guessYear(); break;
     case 'set.stavka': S.stavka = +v > 0 ? +v : 18; break;
