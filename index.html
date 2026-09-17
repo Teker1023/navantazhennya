@@ -1048,7 +1048,13 @@ try { TAB = localStorage.getItem(LS + ':tab') || 'help'; } catch (e) {}
 if (!TABS.includes(TAB)) TAB = 'help';
 const V = {};
 const dist = { only: false, cls: '' }, bulk = { s: '', t: '', grp: 'free', cls: new Set() };
-let teacherQ = '';
+/* пошук на сторінках: класи, вчителі, розподіл, навантаження */
+const Q = { classes: '', teachers: '', dist: '', load: '' };
+const hasQ = k => Q[k].trim().length > 0;
+const searchBox = (k, ph) => `<div class="search"><input data-q="${k}" value="${esc(Q[k])}" placeholder="${esc(ph)}" aria-label="Пошук">${Q[k] ? `<button class="x plain" data-act="clearQ" data-k="${k}" title="Очистити">${ic('x')}</button>` : ''}</div>`;
+const hit = (k, ...parts) => !hasQ(k) || parts.filter(Boolean).join(' ').toLowerCase().includes(Q[k].trim().toLowerCase());
+/* що веде вчитель — рядком, для пошуку */
+const teachesText = x => [...bySubject(x).map(s => s.s.name + ' ' + s.parts.map(p => p.label).join(' ')), ...x.extra.map(e => e.title)].join(' ');
 let planAll = false;
 
 function progress() {
@@ -1180,7 +1186,12 @@ function importReport() {
     const c = byId(S.classes, r.cid), s = byId(S.subjects, r.sid), f = [];
     if (r.students) f.push(`<span class="pill">${r.students} ${plural(r.students, 'учень', 'учні', 'учнів')}${r.classCount !== r.students ? ` · у класі ${r.classCount}` : ''}</span>`);
     else f.push('<span class="pill warn">учнів не знайдено</span>');
-    if (r.est) f.push(`<span class="pill${r.planSet ? ' warn' : ''}">~${r.est} год/тиж${r.planSet ? ' → у план, перевірте' : ''}</span>`);
+    if (r.est) {
+      /* стан оновлюється: коли години звірені на кроці 2, плашка стає зеленою */
+      const cur = c && s ? cellOf(c, s) : null;
+      const done = cur && cur.h && !cur.est;
+      f.push(`<span class="pill${done ? ' ok' : r.planSet ? ' warn' : ''}">${done ? `${fmt(cur.h)} год/тиж, звірено` : `~${r.est} год/тиж${r.planSet ? ' → у план, перевірте' : ''}`}</span>`);
+    }
     f.push(r.teacher ? `<span class="pill ok">${ic('teacher')} ${esc(shortName(r.teacher))}${r.group ? `, група ${r.group}` : ''}</span>` : '<span class="pill warn">без вчителя — потрібна галочка «Планування»</span>');
     if (lastOfPair && c && s && r.groups > 1) f.push(`<span class="pill blue">${r.groups} групи за списками учнів</span>`);
     if (lastOfPair && r.shared) f.push('<span class="pill warn">ті самі учні у двох вчителів — заміна? перевірте</span>');
@@ -1189,13 +1200,16 @@ function importReport() {
   return `<section class="card"><header>${ic('check')}<h3>Завантажено ${ok} з ${lastImport.length} ${plural(lastImport.length, 'файлу', 'файлів', 'файлів')}</h3><span class="sp"></span><button class="x plain" data-act="closeImport" title="Сховати">${ic('x')}</button></header><div class="report">${rows}</div></section>`;
 }
 V.classes = () => {
-  const list = cls();
+  const allC = cls();
+  const teachOf = c => S.teachers.filter(t => S.subjects.some(sj => [...Array(groupsOf(c, sj))].some((_, i) => S.assign[c.id + '|' + sj.id + '|' + i] === t.id))).map(t => t.name).join(' ');
+  const subjOf = c => S.subjects.filter(sj => hoursOf(c, sj)).map(sj => sj.name).join(' ');
+  const list = allC.filter(c => hit('classes', c.name, c.src, subjOf(c), teachOf(c)));
   const drop = list.length
     ? `<div class="drop compact" data-act="pickXlsx" role="button" tabindex="0">${ic('upload')}<div><b>Додати ще журнали з Мрії</b><span>Перетягніть файли сюди або натисніть, щоб вибрати. Повторне завантаження оновлює дані, а не дублює.</span></div></div>`
     : `<div class="drop" data-act="pickXlsx" role="button" tabindex="0">${ic('upload')}<div><b>Перетягніть сюди файли журналів з Мрії</b><br><span>або натисніть, щоб вибрати. Можна багато файлів одразу.</span></div>
         <ol class="howto"><li><span>Мрія → Журнали → клас → предмет</span></li><li><span>«Експорт» з усіма трьома галочками</span></li><li><span>Перетягніть файли сюди</span></li></ol></div>`;
-  const table = !list.length ? '' : `<section class="card">
-  <header><h2>Класи</h2><span class="pill">${list.length}</span><span class="sp"></span></header>
+  const table = !allC.length ? '' : !list.length ? `<section class="card"><header><h2>Класи</h2><span class="sp"></span>${searchBox('classes', 'Пошук: клас, предмет або вчитель')}</header><div class="empty">${ic('classes')}<b>Нічого не знайдено</b><p>За запитом «${esc(Q.classes)}» класів нема.</p></div></section>` : `<section class="card">
+  <header><h2>Класи</h2><span class="pill">${hasQ('classes') ? `${list.length} з ${allC.length}` : allC.length}</span><span class="sp"></span>${searchBox('classes', 'Пошук: клас, предмет або вчитель')}</header>
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th style="width:110px">Клас</th><th class="c" style="width:100px">Учнів</th><th class="c" style="width:100px">Хлопців</th><th class="c" style="width:100px">Дівчат</th><th class="c">Годин / тиж</th><th>Поділ на групи</th><th>Джерело</th><th style="width:48px"></th></tr></thead>
     <tbody>${list.map(c => {
@@ -1344,10 +1358,8 @@ function planTotals() {
 /* ---------- 3. Вчителі ---------- */
 const meter = h => { const st = status(h)[1], max = S.stavka * 1.5; return `<div class="meter" title="${fmt(h)} год із ${S.stavka} (ставка)"><i class="${st}" style="width:${Math.min(100, h / max * 100)}%"></i><em style="left:${100 / 1.5}%"></em></div>`; };
 V.teachers = () => {
-  const all = loads(), needle = teacherQ.trim().toLowerCase();
-  const L = needle ? all.filter(x => (x.t.name + ' ' + (x.t.note || '')).toLowerCase().includes(needle) ||
-    bySubject(x).some(s => s.s.name.toLowerCase().includes(needle)) ||
-    x.rows.some(u => u.c.name.toLowerCase().includes(needle))) : all;
+  const all = loads();
+  const L = all.filter(x => hit('teachers', x.t.name, x.t.note, teachesText(x)));
   const list = L.length ? `<div class="tblwrap"><table class="tbl">
     <thead><tr><th>ПІБ</th><th style="width:250px">Тип і посада</th><th style="width:170px">Навантаження</th><th style="width:110px">Доплати</th><th style="width:48px"></th></tr></thead>
     <tbody>${L.map(x => `<tr${overAdmin(x.t, x.total) ? ' class="unassigned"' : ''}><td><input data-f="t.name" data-id="${x.t.id}" value="${esc(x.t.name)}" style="font-weight:600" aria-label="ПІБ"></td>
@@ -1370,10 +1382,10 @@ ${how('Як рахується навантаження вчителя',
   '<b>Доплати, %</b> — класне керівництво й інші доплати у відсотках ставки. Наведіть мишу на число, щоб побачити, з чого воно склалося.',
   'Наведіть мишу на години — покаже по предметах і класах.')}
 <div class="split">
-  <section class="card"><header><h2>Вчителі та адміністрація</h2><span class="pill">${needle ? `${L.length} з ${all.length}` : all.length}</span><span class="sp"></span>
+  <section class="card"><header><h2>Вчителі та адміністрація</h2><span class="pill">${hasQ('teachers') ? `${L.length} з ${all.length}` : all.length}</span><span class="sp"></span>
     <button class="btn small" data-act="fillPosts" title="Заповнити порожні посади за предметами, які веде вчитель">${ic('check')} Заповнити посади</button>
-    <div class="search"><input id="tSearch" value="${esc(teacherQ)}" placeholder="Пошук: прізвище, предмет або клас" aria-label="Пошук вчителя">${teacherQ ? `<button class="x plain" data-act="clearTSearch" title="Очистити">${ic('x')}</button>` : ''}</div></header>
-    ${needle && !L.length ? `<div class="empty">${ic('teacher')}<b>Нікого не знайдено</b><p>За запитом «${esc(teacherQ)}» вчителів нема. Спробуйте прізвище, предмет або клас.</p></div>` : list}</section>
+    ${searchBox('teachers', 'Пошук: прізвище, предмет або клас')}</header>
+    ${hasQ('teachers') && !L.length ? `<div class="empty">${ic('teacher')}<b>Нікого не знайдено</b><p>За запитом «${esc(Q.teachers)}» нікого нема. Спробуйте прізвище, предмет або клас.</p></div>` : list}</section>
   <div class="stack">
     <section class="card"><header><h3>${ic('plus')} Додати вручну</h3></header>
       <label class="field">ПІБ — кожен з нового рядка<textarea id="newTeachers" placeholder="Іваненко Ірина Петрівна&#10;Петренко Олег Васильович"></textarea></label>
@@ -1443,8 +1455,9 @@ V.dist = () => {
   if (!subs.some(s => s.id === bulk.s)) bulk.s = subs[0].id;
   const bs = byId(S.subjects, bulk.s), bC = cls().filter(c => hoursOf(c, bs));
   const C = cls().filter(c => !dist.cls || c.id === dist.cls);
+  const tName = id => byId(S.teachers, id)?.name || '';
   const body = C.map(c => {
-    const rows = U.filter(u => u.c === c && (!dist.only || !u.t));
+    const rows = U.filter(u => u.c === c && (!dist.only || !u.t) && hit('dist', c.name, u.s.name, tName(u.t)));
     if (!rows.length) return '';
     const ch = U.filter(u => u.c === c).reduce((a, u) => a + u.h, 0);
     return `<tr class="grouprow"><th colspan="4">${esc(c.name)}<span>${c.students ?? '?'} учнів · ${fmt(ch)} год вчителям</span></th></tr>` +
@@ -1475,10 +1488,12 @@ ${how('Як це працює',
   <div class="toolbar">
     <div class="seg" role="group" aria-label="Фільтр"><button data-act="distOnly" data-v="0" aria-pressed="${!dist.only}">Усі рядки</button><button data-act="distOnly" data-v="1" aria-pressed="${dist.only}">Без вчителя${freeN ? ' · ' + freeN : ''}</button></div>
     <span class="sp"></span>
+    ${searchBox('dist', 'Пошук: клас, предмет або вчитель')}
     <select data-f="dist.cls" style="width:auto" aria-label="Клас"><option value="">Усі класи</option>${cls().map(c => `<option value="${c.id}"${c.id === dist.cls ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
   </div>
   ${body ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Предмет</th><th style="width:150px">Група</th><th class="c" style="width:110px">Год / тиж</th><th style="width:40%">Вчитель</th></tr></thead><tbody>${body}</tbody></table></div>`
-    : `<div class="empty">${ic('check')}<b>Усе розподілено</b><p>Рядків без вчителя нема.</p></div>`}
+    : hasQ('dist') ? `<div class="empty">${ic('dist')}<b>Нічого не знайдено</b><p>За запитом «${esc(Q.dist)}» рядків нема.</p></div>`
+      : `<div class="empty">${ic('check')}<b>Усе розподілено</b><p>Рядків без вчителя нема.</p></div>`}
 </section>`;
 };
 
@@ -1488,7 +1503,8 @@ V.load = () => {
   if (!S.teachers.length) return pageHead('Навантаження вчителів', '') + emptyState('teacher', 'Ще нема вчителів', 'Коли вчителів буде призначено на класи, тут з’явиться підсумкова таблиця.', 'teachers', 'До вчителів');
   const all = U.reduce((a, u) => a + u.h, 0), free = U.filter(u => !u.t), freeH = free.reduce((a, u) => a + u.h, 0);
   const extraH = S.extras.reduce((a, e) => a + (+e.h || 0), 0), doneH = all - freeH + extraH;
-  const body = L.map((x, n) => {
+  const shown = L.filter(x => hit('load', x.t.name, x.t.note, teachesText(x)));
+  const body = shown.map((x, n) => {
     const subs = bySubject(x);
     const what = subs.map(s => `<div class="teach"><b>${esc(s.s.name)}</b>${s.parts.map(p => `<span class="chip">${esc(p.label)} · <b>${fmt(p.u.h)}</b></span>`).join('')}</div>`).join('') +
       x.extra.map(e => `<div class="teach"><b>${esc(e.title)}</b><span class="chip">додатково · <b>${fmt(+e.h || 0)}</b></span></div>`).join('');
@@ -1510,6 +1526,7 @@ V.load = () => {
 ${loads().filter(x => overAdmin(x.t, x.total)).length ? `<div class="notice warn noprint">${ic('alert')}<span class="grow"><b>Перевищено ліміт годин для адмінперсоналу.</b> ${loads().filter(x => overAdmin(x.t, x.total)).map(x => `${esc(x.t.name)} — ${fmt(x.total)} год`).join('; ')}. Дозволено не більше ${S.adminMax} год на тиждень.</span><button class="btn small" data-go="dist">До розподілу</button></div>` : ''}
 ${freeH ? `<div class="notice warn noprint">${ic('alert')}<span class="grow"><b>${fmt(freeH)} год ще без вчителя:</b> ${free.slice(0, 6).map(u => `${esc(u.c.name)} ${esc(u.s.name)}${u.g > 1 ? ' гр.' + (u.i + 1) : ''}`).join(', ')}${free.length > 6 ? ` і ще ${free.length - 6}` : ''}.</span><button class="btn small primary" data-go="dist">До розподілу</button></div>` : ''}
 <section class="card">
+  <div class="toolbar noprint"><h3>Таблиця навантаження</h3><span class="pill">${hasQ('load') ? `${shown.length} з ${L.length}` : L.length}</span><span class="sp"></span>${searchBox('load', 'Пошук: вчитель, предмет або клас')}</div>
   ${how('Як читати цю таблицю',
     '<b>Що веде</b> — предмет, а поруч класи й години кожного: <code>9-Б · 3</code> означає 3 год на тиждень у 9-Б. <code>гр.1</code> — перша група поділеного класу.',
     `<b>Навантаження</b> — сума цих годин; смужка показує їх відносно ставки (${S.stavka} год), риска на смужці — рівно одна ставка.`,
@@ -1517,6 +1534,7 @@ ${freeH ? `<div class="notice warn noprint">${ic('alert')}<span class="grow"><b>
     '<b>Стан</b> — просто підказка: менше ставки, рівно ставка або понад ставку. Це не помилка, а привід перевірити розподіл.')}
   <div class="tblwrap"><table class="tbl"><thead><tr><th style="width:44px">№</th><th style="width:210px">Вчитель</th><th>Що веде (клас · годин)</th><th style="width:170px">Навантаження</th><th style="width:210px">Класне керівництво і доплати</th><th style="width:120px">Стан</th></tr></thead>
   <tbody>${body}</tbody></table></div>
+  ${hasQ('load') && !shown.length ? `<div class="empty">${ic('teacher')}<b>Нічого не знайдено</b><p>За запитом «${esc(Q.load)}» нікого нема.</p></div>` : ''}
 </section>`;
 };
 
@@ -1588,7 +1606,7 @@ const ACT = {
   planAll: el => { planAll = el.dataset.v === '1'; planWarnOnly = false; render(); },
   planWarn: () => { planWarnOnly = !planWarnOnly; render(); },
   fillPosts: () => { const n = fillPosts(false); save(true); render(); toast(n ? `Заповнено посад: ${n}` : 'Усі посади вже заповнені'); },
-  clearTSearch: () => { teacherQ = ''; render(); setTimeout(() => $('#tSearch')?.focus(), 0); },
+  clearQ: el => { Q[el.dataset.k] = ''; render(); setTimeout(() => $(`[data-q="${el.dataset.k}"]`)?.focus(), 0); },
   rowOk: el => {
     let n = 0;
     for (const c of S.classes) { const p = S.plan[c.id + '|' + el.dataset.k]; if (p?.est && p.h) { delete p.est; n++; } }
@@ -1814,10 +1832,16 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('input', e => {
   const el = e.target;
-  if (el.id === 'tSearch') {
-    teacherQ = el.value;
+  if (el.dataset.q) {
+    const k = el.dataset.q;
+    Q[k] = el.value;
     clearTimeout(el._t);
-    el._t = setTimeout(() => { const pos = el.selectionStart; render(); const n = $('#tSearch'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 200);
+    el._t = setTimeout(() => {
+      const pos = el.selectionStart;
+      render();
+      const n = $(`[data-q="${k}"]`);
+      if (n) { n.focus(); n.setSelectionRange(pos, pos); }
+    }, 200);
     return;
   }
   if (!el.dataset.plan) return;
