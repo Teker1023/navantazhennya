@@ -407,15 +407,53 @@ function guessYear() { const d = new Date(), y = d.getMonth() >= 7 ? d.getFullYe
 function blank() {
   return { v: 1, school: '', year: guessYear(), stavka: 18, splitMin: 27, classes: [],
     subjects: SUBJECTS.map(([name, split]) => ({ id: uid(), name, split })),
-    teachers: [], plan: {}, assign: {}, extras: [], homeroom: {}, pays: [], updated: 0 };
+    teachers: [], plan: {}, assign: {}, extras: [], homeroom: {}, pays: [], adminMax: 9, updated: 0 };
 }
 function valid(d) {
   if (!d || d.v !== 1 || !Array.isArray(d.classes) || !Array.isArray(d.subjects) || !Array.isArray(d.teachers)) return false;
   /* дані, збережені до появи доплат */
   if (!d.homeroom) d.homeroom = {};
   if (!Array.isArray(d.pays)) d.pays = [];
+  if (!d.adminMax) d.adminMax = 9;
   return true;
 }
+
+/* Посади адміністрації: для них педнавантаження обмежене (ліміт у налаштуваннях) */
+const ADMIN_POSTS = ['Директор', 'Заступник директора з навчально-виховної роботи', 'Заступник директора з виховної роботи',
+  'Заступник директора з навчальної роботи', 'Заступник директора з господарської роботи', 'Інша посада адміністрації'];
+/* назва предмета → як він звучить у посаді вчителя */
+const SUBJ_POS = {
+  'українська мова': 'української мови', 'українська література': 'української літератури',
+  'зарубіжна література': 'зарубіжної літератури', 'англійська мова': 'англійської мови',
+  'німецька мова': 'німецької мови', 'французька мова': 'французької мови', 'друга іноземна мова': 'іноземної мови',
+  'математика': 'математики', 'алгебра': 'алгебри', 'геометрія': 'геометрії',
+  'історія україни': 'історії', 'всесвітня історія': 'історії', 'громадянська освіта': 'громадянської освіти',
+  'географія': 'географії', 'пізнаємо природу': 'природознавства', 'біологія': 'біології',
+  'фізика': 'фізики', 'хімія': 'хімії', 'інформатика': 'інформатики', 'технології': 'технологій',
+  'трудове навчання': 'трудового навчання', 'мистецтво': 'мистецтва',
+  'здоров’я, безпека та добробут': 'основ здоров’я', 'фізична культура': 'фізичної культури',
+  'захист україни': 'Захисту України'
+};
+const subjPos = name => SUBJ_POS[normSubj(name)] || name.toLowerCase();
+const isAdmin = t => t.role === 'admin';
+/* посада вчителя за предметами, які він веде: два найбільші за годинами */
+function autoPost(x) {
+  /* «Історія України» і «Всесвітня історія» дають одне слово — не повторюємо його двічі */
+  const subs = [...new Set(bySubject(x).sort((a, b) => b.h - a.h).map(s => subjPos(s.s.name)))].slice(0, 2);
+  return subs.length ? 'вчитель ' + subs.join(' і ') : '';
+}
+/* заповнити порожні посади; force — переписати й ті, що вже є */
+function fillPosts(force) {
+  let n = 0;
+  for (const x of loads()) {
+    if (isAdmin(x.t) || (!force && x.t.note)) continue;
+    const post = autoPost(x);
+    if (post && x.t.note !== post) { x.t.note = post; n++; }
+  }
+  return n;
+}
+/* перевищення ліміту годин для адміністрації */
+const overAdmin = (t, total) => isAdmin(t) && total > S.adminMax;
 
 /* ---------- доплати за Інструкцією про порядок обчислення заробітної плати працівників освіти
    (наказ МОН від 15.04.1993 № 102, розділ «Доплати»). Відсотки — від ставки (посадового окладу).
@@ -857,7 +895,8 @@ async function importFiles(files) {
     try { await importBuffer(await f.arrayBuffer(), f.name, res); }
     catch (e) { res.push({ file: f.name, err: e.message || String(e) }); }
   }
-  lastImport = res; save(); go('classes');
+  fillPosts(false);
+  lastImport = res; save(true); go('classes');
 }
 async function openJsonFile(f) {
   try {
@@ -932,7 +971,7 @@ function download(blob, name) {
 const r2 = n => Math.round(n * 100) / 100;
 function exportXlsx() {
   const C = cls(), L = loads(), U = units();
-  const summary = [['№', 'Вчитель', 'Посада / примітка', 'Предмети', 'Годин на тиждень', 'Ставок', 'Класне керівництво', 'Доплати, % ставки', 'Стан']];
+  const summary = [['№', 'Вчитель', 'Тип', 'Посада', 'Предмети', 'Годин на тиждень', 'Ставок', 'Класне керівництво', 'Доплати, % ставки', 'Стан']];
   const pays = [['Вчитель', 'Вид доплати', 'Деталі', 'Розмір, % ставки', 'Норма за Інструкцією № 102']];
   const detail = [['Вчитель', 'Предмет / вид роботи', 'Клас', 'Група', 'Годин на тиждень']];
   const matrix = [['Вчитель', 'Предмет', ...C.map(c => c.name), 'Разом']];
@@ -940,8 +979,8 @@ function exportXlsx() {
   L.forEach((x, i) => {
     const subs = bySubject(x);
     const hr = homeroomOf(x.t), hrPct = hr.reduce((a, c) => a + (+S.homeroom[c.id + ':pct'] || homeroomPct(c)), 0);
-    summary.push([i + 1, x.t.name, x.t.note || '', [...subs.map(s => s.s.name), ...x.extra.map(e => e.title)].join(', '), r2(x.total), r2(x.total / S.stavka),
-      hr.map(c => c.name).join(', '), r2(payTotal(x.t)) || '', status(x.total)[0]]);
+    summary.push([i + 1, x.t.name, isAdmin(x.t) ? 'Адміністрація' : 'Вчитель', x.t.note || '', [...subs.map(s => s.s.name), ...x.extra.map(e => e.title)].join(', '), r2(x.total), r2(x.total / S.stavka),
+      hr.map(c => c.name).join(', '), r2(payTotal(x.t)) || '', overAdmin(x.t, x.total) ? `перевищено ліміт ${S.adminMax} год` : status(x.total)[0]]);
     hr.forEach(c => pays.push([x.t.name, 'Класне керівництво', c.name + (c.students ? `, ${c.students} учнів` : ''), r2(+S.homeroom[c.id + ':pct'] || homeroomPct(c)), gradeOf(c.name) <= 4 ? '20 % (до 12 учнів — 10 %)' : '25 % (до 12 учнів — 12,5 %)']));
     paysOf(x.t).forEach(p => {
       const k = payKind(p.kind);
@@ -963,7 +1002,7 @@ function exportXlsx() {
   const un = [['Клас', 'Предмет', 'Група', 'Годин на тиждень']];
   U.filter(u => !u.t).forEach(u => un.push([u.c.name, u.s.name, u.g > 1 ? u.i + 1 : '', u.h]));
   const sheets = [
-    { name: 'Підсумок', rows: summary, widths: [5, 34, 22, 60, 16, 9, 20, 18, 16] },
+    { name: 'Підсумок', rows: summary, widths: [5, 34, 16, 40, 60, 16, 9, 20, 18, 22] },
     { name: 'Доплати', rows: pays, widths: [34, 46, 34, 18, 28] },
     { name: 'Розподіл', rows: detail, widths: [34, 30, 8, 7, 16] },
     { name: 'Зведена', rows: matrix, widths: [34, 30, ...C.map(() => 7), 9], bold },
@@ -1310,13 +1349,19 @@ V.teachers = () => {
     bySubject(x).some(s => s.s.name.toLowerCase().includes(needle)) ||
     x.rows.some(u => u.c.name.toLowerCase().includes(needle))) : all;
   const list = L.length ? `<div class="tblwrap"><table class="tbl">
-    <thead><tr><th>ПІБ і посада</th><th style="width:170px">Навантаження</th><th style="width:110px">Доплати</th><th style="width:48px"></th></tr></thead>
-    <tbody>${L.map(x => `<tr><td><div style="display:flex;flex-direction:column;gap:6px"><input data-f="t.name" data-id="${x.t.id}" value="${esc(x.t.name)}" style="font-weight:600" aria-label="ПІБ">
-      <input data-f="t.note" data-id="${x.t.id}" value="${esc(x.t.note || '')}" placeholder="посада, напр. вчитель фізкультури" aria-label="Посада" style="min-height:30px;font-size:13px"></div></td>
-      <td><div class="loadcell" title="${esc(loadWhy(x))}"><span><b>${fmt(x.total)} год</b> <span class="muted">· ${fmt(x.total / S.stavka)} ст.</span></span>${meter(x.total)}</div></td>
+    <thead><tr><th>ПІБ</th><th style="width:250px">Тип і посада</th><th style="width:170px">Навантаження</th><th style="width:110px">Доплати</th><th style="width:48px"></th></tr></thead>
+    <tbody>${L.map(x => `<tr${overAdmin(x.t, x.total) ? ' class="unassigned"' : ''}><td><input data-f="t.name" data-id="${x.t.id}" value="${esc(x.t.name)}" style="font-weight:600" aria-label="ПІБ"></td>
+      <td><div style="display:flex;flex-direction:column;gap:6px">
+        <select data-f="t.role" data-id="${x.t.id}" aria-label="Тип"><option value=""${isAdmin(x.t) ? '' : ' selected'}>Вчитель</option><option value="admin"${isAdmin(x.t) ? ' selected' : ''}>Адміністрація</option></select>
+        ${isAdmin(x.t)
+          ? `<select data-f="t.note" data-id="${x.t.id}" aria-label="Посада">${ADMIN_POSTS.map(o => `<option${o === x.t.note ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`
+          : `<input data-f="t.note" data-id="${x.t.id}" value="${esc(x.t.note || '')}" placeholder="посада заповниться з предметів" aria-label="Посада" style="min-height:30px;font-size:13px">`}
+      </div></td>
+      <td><div class="loadcell" title="${esc(loadWhy(x))}"><span><b>${fmt(x.total)} год</b> <span class="muted">· ${fmt(x.total / S.stavka)} ст.</span></span>${meter(x.total)}
+        ${overAdmin(x.t, x.total) ? `<span class="pill bad" title="Для адміністрації педнавантаження обмежене: не більше ${S.adminMax} год на тиждень. Змінити ліміт можна в «Дані і копії».">${ic('alert')} ліміт ${S.adminMax} год</span>` : ''}</div></td>
       <td>${payTotal(x.t) ? `<span class="pill blue" title="${esc(payWhy(x.t))}">+${fmt(payTotal(x.t))} %</span>` : '<span class="muted">—</span>'}</td>
       <td><button class="x" data-act="delTeacher" data-id="${x.t.id}" title="Видалити">${ic('trash')}</button></td></tr>`).join('')}</tbody></table></div>
-    <p class="hint">Смужка — години відносно ставки: риска = ${S.stavka} год (1 ставка).</p>`
+    <p class="hint">Смужка — години відносно ставки: риска = ${S.stavka} год (1 ставка). Для адміністрації діє окремий ліміт — ${S.adminMax} год на тиждень.</p>`
     : `<div class="empty">${ic('teacher')}<b>Вчителів ще нема</b><p>Вони з’являться самі, коли завантажите журнали з галочкою «Планування». Або додайте вручну праворуч.</p></div>`;
   return pageHead('Вчителі', 'Вчителі з журналів Мрії додаються й призначаються автоматично. Тут можна перевірити список, дописати посаду і додати тих, кого в журналах нема.') + `
 ${how('Як рахується навантаження вчителя',
@@ -1325,7 +1370,8 @@ ${how('Як рахується навантаження вчителя',
   '<b>Доплати, %</b> — класне керівництво й інші доплати у відсотках ставки. Наведіть мишу на число, щоб побачити, з чого воно склалося.',
   'Наведіть мишу на години — покаже по предметах і класах.')}
 <div class="split">
-  <section class="card"><header><h2>Список вчителів</h2><span class="pill">${needle ? `${L.length} з ${all.length}` : all.length}</span><span class="sp"></span>
+  <section class="card"><header><h2>Вчителі та адміністрація</h2><span class="pill">${needle ? `${L.length} з ${all.length}` : all.length}</span><span class="sp"></span>
+    <button class="btn small" data-act="fillPosts" title="Заповнити порожні посади за предметами, які веде вчитель">${ic('check')} Заповнити посади</button>
     <div class="search"><input id="tSearch" value="${esc(teacherQ)}" placeholder="Пошук: прізвище, предмет або клас" aria-label="Пошук вчителя">${teacherQ ? `<button class="x plain" data-act="clearTSearch" title="Очистити">${ic('x')}</button>` : ''}</div></header>
     ${needle && !L.length ? `<div class="empty">${ic('teacher')}<b>Нікого не знайдено</b><p>За запитом «${esc(teacherQ)}» вчителів нема. Спробуйте прізвище, предмет або клас.</p></div>` : list}</section>
   <div class="stack">
@@ -1446,8 +1492,8 @@ V.load = () => {
     const subs = bySubject(x);
     const what = subs.map(s => `<div class="teach"><b>${esc(s.s.name)}</b>${s.parts.map(p => `<span class="chip">${esc(p.label)} · <b>${fmt(p.u.h)}</b></span>`).join('')}</div>`).join('') +
       x.extra.map(e => `<div class="teach"><b>${esc(e.title)}</b><span class="chip">додатково · <b>${fmt(+e.h || 0)}</b></span></div>`).join('');
-    const [st, cl] = status(x.total);
-    return `<tr><td class="num muted">${n + 1}</td><td><span class="cellname">${esc(x.t.name)}</span>${x.t.note ? `<span class="cellsub">${esc(x.t.note)}</span>` : ''}</td>
+    const [st, cl] = overAdmin(x.t, x.total) ? [`понад ліміт ${S.adminMax} год`, 'bad'] : status(x.total);
+    return `<tr><td class="num muted">${n + 1}</td><td><span class="cellname">${esc(x.t.name)}</span>${x.t.note ? `<span class="cellsub">${esc(x.t.note)}</span>` : ''}${isAdmin(x.t) ? '<span class="pill blue">адміністрація</span>' : ''}</td>
       <td>${what || '<span class="muted">нічого не призначено</span>'}</td>
       <td><div class="loadcell" title="${esc(loadWhy(x))}"><span><b>${fmt(x.total)} год</b> <span class="muted">· ${fmt(x.total / S.stavka)} ст.</span></span>${meter(x.total)}</div></td>
       <td>${payCell(x.t)}</td>
@@ -1461,6 +1507,7 @@ V.load = () => {
   <div class="tile"><span>Вчителів</span><b>${S.teachers.length}</b></div>
   <div class="tile"><span>Ставок разом ${q(`(${fmt(all - freeH)} розподілених + ${fmt(extraH)} додаткових) ÷ ${S.stavka}`)}</span><b>${fmt(doneH / S.stavka)}</b></div>
 </div>
+${loads().filter(x => overAdmin(x.t, x.total)).length ? `<div class="notice warn noprint">${ic('alert')}<span class="grow"><b>Перевищено ліміт годин для адмінперсоналу.</b> ${loads().filter(x => overAdmin(x.t, x.total)).map(x => `${esc(x.t.name)} — ${fmt(x.total)} год`).join('; ')}. Дозволено не більше ${S.adminMax} год на тиждень.</span><button class="btn small" data-go="dist">До розподілу</button></div>` : ''}
 ${freeH ? `<div class="notice warn noprint">${ic('alert')}<span class="grow"><b>${fmt(freeH)} год ще без вчителя:</b> ${free.slice(0, 6).map(u => `${esc(u.c.name)} ${esc(u.s.name)}${u.g > 1 ? ' гр.' + (u.i + 1) : ''}`).join(', ')}${free.length > 6 ? ` і ще ${free.length - 6}` : ''}.</span><button class="btn small primary" data-go="dist">До розподілу</button></div>` : ''}
 <section class="card">
   ${how('Як читати цю таблицю',
@@ -1496,7 +1543,8 @@ V.settings = () => pageHead('Дані і копії', 'Усе зберігаєт
   <section class="card"><header><h2>Школа</h2></header>
     <label class="field">Назва школи<input data-f="set.school" value="${esc(S.school)}" placeholder="напр. Ільницький ЗЗСО І-ІІІ ст."></label>
     <div class="row"><label class="field">Навчальний рік<input data-f="set.year" value="${esc(S.year)}"></label><label class="field">Ставка, год/тиж<input type="number" min="1" data-f="set.stavka" value="${S.stavka}"></label></div>
-    <label class="field">Ділити на групи від, учнів<input type="number" min="1" data-f="set.splitMin" value="${S.splitMin}"></label>
+    <div class="row"><label class="field">Ділити на групи від, учнів<input type="number" min="1" data-f="set.splitMin" value="${S.splitMin}"></label>
+    <label class="field">Ліміт годин для адміністрації<input type="number" min="0" data-f="set.adminMax" value="${S.adminMax}"></label></div>
     <p class="hint">Поріг діє, коли груп не видно з журналів. Якщо в журналах різні діти — групи визначаються за ними.</p>
   </section>
   <section class="card"><header><h2>Копія файлом</h2></header>
@@ -1539,6 +1587,7 @@ const ACT = {
   },
   planAll: el => { planAll = el.dataset.v === '1'; planWarnOnly = false; render(); },
   planWarn: () => { planWarnOnly = !planWarnOnly; render(); },
+  fillPosts: () => { const n = fillPosts(false); save(true); render(); toast(n ? `Заповнено посад: ${n}` : 'Усі посади вже заповнені'); },
   clearTSearch: () => { teacherQ = ''; render(); setTimeout(() => $('#tSearch')?.focus(), 0); },
   rowOk: el => {
     let n = 0;
@@ -1809,6 +1858,14 @@ document.addEventListener('change', e => {
     case 'subj.split': byId(S.subjects, id).split = +v; redraw = true; break;
     case 't.name': if (v.trim()) byId(S.teachers, id).name = v.trim(); break;
     case 't.note': byId(S.teachers, id).note = v.trim(); break;
+    case 't.role': {
+      const t = byId(S.teachers, id);
+      t.role = v || undefined;
+      /* адміністрації підставляємо посаду зі списку, вчителю — за предметами */
+      if (v === 'admin') { if (!ADMIN_POSTS.includes(t.note)) t.note = ADMIN_POSTS[0]; }
+      else if (ADMIN_POSTS.includes(t.note)) { t.note = ''; fillPosts(false); }
+      redraw = true; break;
+    }
     case 'ex.title': byId(S.extras, id).title = v.trim(); break;
     case 'ex.h': byId(S.extras, id).h = num || 0; break;
     case 'hr.t': { if (v) S.homeroom[id] = v; else { delete S.homeroom[id]; delete S.homeroom[id + ':pct']; } redraw = true; break; }
@@ -1819,6 +1876,7 @@ document.addEventListener('change', e => {
     case 'set.year': S.year = v.trim() || guessYear(); break;
     case 'set.stavka': S.stavka = +v > 0 ? +v : 18; break;
     case 'set.splitMin': S.splitMin = +v > 0 ? +v : 27; break;
+    case 'set.adminMax': S.adminMax = num ?? 9; redraw = true; break;
     case 'assign': if (v) S.assign[el.dataset.k] = v; else delete S.assign[el.dataset.k]; redraw = true; break;
     case 'bulk.s': bulk.s = v; bulk.cls.clear(); return render();
     case 'bulk.t': bulk.t = v; return;
