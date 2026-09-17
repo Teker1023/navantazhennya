@@ -1049,7 +1049,7 @@ if (!TABS.includes(TAB)) TAB = 'help';
 const V = {};
 const dist = { only: false, cls: '' }, bulk = { s: '', t: '', grp: 'free', cls: new Set() };
 /* пошук на сторінках: класи, вчителі, розподіл, навантаження */
-const Q = { classes: '', teachers: '', dist: '', load: '' };
+const Q = { classes: '', teachers: '', dist: '', load: '', hr: '', pays: '' };
 const hasQ = k => Q[k].trim().length > 0;
 const searchBox = (k, ph) => `<div class="search"><input data-q="${k}" value="${esc(Q[k])}" placeholder="${esc(ph)}" aria-label="Пошук">${Q[k] ? `<button class="x plain" data-act="clearQ" data-k="${k}" title="Очистити">${ic('x')}</button>` : ''}</div>`;
 const hit = (k, ...parts) => !hasQ(k) || parts.filter(Boolean).join(' ').toLowerCase().includes(Q[k].trim().toLowerCase());
@@ -1409,29 +1409,34 @@ function payBlocks() {
   const T = teachersSorted(), C = cls();
   if (!T.length) return '';
   const tOpt = sel => `<option value="">— нема —</option>` + T.map(t => `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}</option>`).join('');
-  const rows = C.map(c => {
+  const Chr = C.filter(c => hit('hr', c.name, byId(S.teachers, S.homeroom[c.id])?.name));
+  const rows = Chr.map(c => {
     const tid = S.homeroom[c.id] || '', pct = S.homeroom[c.id + ':pct'] ?? homeroomPct(c);
     return `<tr><td><span class="cellname">${esc(c.name)}</span><span class="cellsub">${c.students ?? '?'} учнів${c.students && c.students < 12 ? ' · до 12 учнів, половинний розмір' : ''}</span></td>
       <td><select data-f="hr.t" data-id="${c.id}">${tOpt(tid)}</select></td>
       <td style="width:110px">${tid ? `<div class="pcin" title="${esc(`Норма за Інструкцією № 102: ${gradeOf(c.name) <= 4 ? '20 % для 1–4 класів' : '25 % для 5–11 класів'}${c.students && c.students < 12 ? '; у класі менше 12 учнів, тому половина' : ''}. Розмір можна змінити.`)}"><input type="number" min="0" max="100" step="0.5" data-f="hr.pct" data-id="${c.id}" value="${fmt(pct)}"><span>%</span></div>` : '<span class="muted">—</span>'}</td></tr>`;
   }).join('');
-  const list = S.pays.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:230px">Вчитель</th><th>Вид доплати</th><th style="width:230px">Деталі</th><th style="width:110px">Розмір</th><th style="width:48px"></th></tr></thead><tbody>` +
-    S.pays.map(p => {
+  const P = S.pays.filter(x => hit('pays', byId(S.teachers, x.teacherId)?.name, payKind(x.kind).t, x.note));
+  const list = !S.pays.length ? '<p class="hint">Доплат ще нема.</p>'
+    : !P.length ? `<div class="empty">${ic('teacher')}<b>Нічого не знайдено</b><p>За запитом «${esc(Q.pays)}» доплат нема.</p></div>`
+    : `<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:230px">Вчитель</th><th>Вид доплати</th><th style="width:230px">Деталі</th><th style="width:110px">Розмір</th><th style="width:48px"></th></tr></thead><tbody>` +
+    P.map(p => {
       const k = payKind(p.kind);
       return `<tr><td>${esc(byId(S.teachers, p.teacherId)?.name || '?')}</td>
         <td>${esc(k.t)}<span class="cellsub">за нормою ${k.min === k.max ? k.min : k.min + '–' + k.max} %</span></td>
         <td><input data-f="pay.note" data-id="${p.id}" value="${esc(p.note || '')}" placeholder="${esc(k.note || '')}"></td>
         <td><div class="pcin"><input type="number" min="0" max="100" step="0.5" data-f="pay.pct" data-id="${p.id}" value="${fmt(p.pct)}"><span>%</span></div>${p.h ? `<span class="cellsub">× ${fmt(p.h)} год / ${S.stavka} = <b>${fmt(payPct(p))} %</b></span>` : ''}</td>
         <td><button class="x" data-act="delPay" data-id="${p.id}" title="Видалити">${ic('trash')}</button></td></tr>`;
-    }).join('') + '</tbody></table></div>' : '<p class="hint">Доплат ще нема.</p>';
+    }).join('') + '</tbody></table></div>';
   return `
 <section class="card">
-  <header><h2>Класне керівництво</h2><span class="sp"></span><span class="pill">${C.filter(c => S.homeroom[c.id]).length} з ${C.length}</span></header>
+  <header><h2>Класне керівництво</h2><span class="pill">${C.filter(c => S.homeroom[c.id]).length} з ${C.length}</span><span class="sp"></span>${searchBox('hr', 'Пошук: клас або керівник')}</header>
   <p class="sub">Розмір за Інструкцією № 102: 1–4 класи — 20 %, 5–11 класи — 25 % ставки. У класі, де менше 12 учнів, — половина. Число можна змінити.</p>
-  ${C.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Клас</th><th>Класний керівник</th><th>Розмір</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="hint">Класів ще нема.</p>'}
+  ${!C.length ? '<p class="hint">Класів ще нема.</p>' : !Chr.length ? `<div class="empty">${ic('classes')}<b>Нічого не знайдено</b><p>За запитом «${esc(Q.hr)}» класів нема.</p></div>`
+    : `<div class="tblwrap"><table class="tbl"><thead><tr><th>Клас</th><th>Класний керівник</th><th>Розмір</th></tr></thead><tbody>${rows}</tbody></table></div>`}
 </section>
 <section class="card">
-  <header><h2>Інші доплати</h2><span class="sp"></span>${S.pays.length ? '' : `<button class="btn small" data-act="suggestPays">${ic('check')} Підказати перевірку робіт</button>`}</header>
+  <header><h2>Інші доплати</h2>${S.pays.length ? `<span class="pill">${hasQ('pays') ? `${P.length} з ${S.pays.length}` : S.pays.length}</span>` : ''}<span class="sp"></span>${S.pays.length ? searchBox('pays', 'Пошук: вчитель, вид доплати') : ''}${S.pays.length ? '' : `<button class="btn small" data-act="suggestPays">${ic('check')} Підказати перевірку робіт</button>`}</header>
   <p class="sub">Перевірка письмових робіт, завідування кабінетом чи майстернею, методоб’єднання тощо. Відсотки — від ставки, у межах, які встановлює директор за погодженням з профкомом. Перевірка робіт рахується пропорційно до годин: норма × години ÷ ${S.stavka}.</p>
   <div class="row">
     <label class="field">Вчитель<select id="payT">${tOpt('')}</select></label>
