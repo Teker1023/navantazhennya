@@ -114,6 +114,8 @@ body.dragging::after{content:"Відпустіть файли, щоб імпор
 .notice{border-radius:10px;padding:10px 14px;background:var(--accent-soft)}
 .notice.warn{background:var(--warn-soft)}
 .notice.ok{background:var(--ok-soft)}
+#banner{max-width:1400px;margin:0 auto;padding:12px 16px 0;display:flex;flex-direction:column;gap:8px}
+#banner .notice{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
 .notice ul{margin:6px 0 0;padding-left:20px}
 
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
@@ -156,6 +158,7 @@ body.dragging::after{content:"Відпустіть файли, щоб імпор
     <nav id="tabs"></nav>
   </div>
 </header>
+<div id="banner" hidden></div>
 <main id="view"></main>
 <div id="toast" role="status"></div>
 <input type="file" id="fileXlsx" multiple accept=".xlsx,.zip" hidden>
@@ -266,6 +269,7 @@ function showSave() {
   if (DIR && dirOk) h += ` <span class="muted">· копія в папці «${esc(DIR.name)}»${dirAt ? ' о ' + hm(dirAt) : ''}</span>`;
   else if (DIR) h += ` <button class="btn small warn" data-act="reconnectDir">Дозволити копії в папку «${esc(DIR.name)}»</button>`;
   el.innerHTML = h;
+  showBanner();
 }
 async function takeData(d, from) {
   if (!valid(d)) { toast('Це не файл програми «Навантаження»'); return false; }
@@ -586,6 +590,22 @@ function render() {
   if (TAB === 'plan') planTotals();
   if (TAB === 'settings') renderSnaps();
   showSave();
+}
+
+/* нагадування про копії: папка не вибрана / давно не було копії файлом */
+const DAY = 86400000;
+let lastExport = 0, snoozeUntil = 0;
+function showBanner() {
+  const el = $('#banner'); if (!el) return;
+  const msgs = [];
+  if (S.classes.length || S.teachers.length) {
+    if (canDir && !DIR) msgs.push(`<b>Не вибрано папку для автокопій.</b> Якщо очистити дані браузера, усе зникне. <button class="btn small primary" data-act="pickDir">Вибрати папку…</button>`);
+    else if (DIR && !dirOk) msgs.push(`<b>Копії в папку «${esc(DIR.name)}» не записуються</b> — браузер просить дозвіл. <button class="btn small primary" data-act="reconnectDir">Дозволити</button>`);
+    if (Date.now() > snoozeUntil && Date.now() - lastExport > 7 * DAY)
+      msgs.push(`<b>${lastExport ? `Копії файлом не було ${Math.floor((Date.now() - lastExport) / DAY)} дн.` : 'Ще не було жодної копії файлом.'}</b> Збережіть і перешліть її (пошта, Telegram, флешка). <button class="btn small primary" data-act="backup">Завантажити копію</button> <button class="btn small" data-act="snooze">Нагадати завтра</button>`);
+  }
+  el.hidden = !msgs.length;
+  el.innerHTML = msgs.map(m => `<div class="notice warn noprint">${m}</div>`).join('');
 }
 const empty = (msg, tab, label) => `<section class="card"><p>${msg}</p><div><button class="btn primary" data-go="${tab}">${label}</button></div></section>`;
 const tOptions = (sel, hours) => `<option value="">— не призначено —</option>` + teachersSorted().map(t => `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}${hours ? ' · ' + fmt(hours.get(t.id) || 0) + ' год' : ''}</option>`).join('');
@@ -983,7 +1003,11 @@ const ACT = {
   exportXlsx,
   print: () => print(),
   openJson: () => $('#fileJson').click(),
-  backup: () => download(new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }), `Навантаження ${S.school ? S.school + ' ' : ''}копія ${today()}.json`),
+  backup: async () => {
+    download(new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }), `Навантаження ${S.school ? S.school + ' ' : ''}копія ${today()}.json`);
+    lastExport = Date.now(); await kvPut('lastExport', lastExport).catch(() => {}); showBanner();
+  },
+  snooze: async () => { snoozeUntil = Date.now() + DAY; await kvPut('snooze', snoozeUntil).catch(() => {}); showBanner(); },
   pickDir: async () => {
     try {
       const h = await showDirectoryPicker({ id: 'navantazhennya', mode: 'readwrite', startIn: 'documents' });
@@ -1092,6 +1116,8 @@ addEventListener('pagehide', () => flush());
     }
     const last = (await listSnaps())[0];
     if (!last || Date.now() - last.at > 30 * 60000) await snapshot('при відкритті');
+    lastExport = await kvGet('lastExport') || 0;
+    snoozeUntil = await kvGet('snooze') || 0;
     DIR = await kvGet('dir') || null;
     if (DIR) dirOk = await DIR.queryPermission({ mode: 'readwrite' }) === 'granted';
     savedAt = S.updated || 0;
