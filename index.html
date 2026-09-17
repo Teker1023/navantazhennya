@@ -642,14 +642,14 @@ function rebuildGroups(c, s) {
     const set = codeSet(j.r), u = units.find(u => sameKids(u.set, set));
     if (u) { set.forEach(x => u.set.add(x)); u.js.push(j); } else units.push({ set, js: [j] });
   }
-  if (!units.some(u => u.js.some(j => byId(S.teachers, j.t)))) return { groups: units.length };
   const base = c.id + '|' + s.id, p = S.plan[base] || (S.plan[base] = {});
   const teacherOf = u => u.js.filter(j => byId(S.teachers, j.t)).sort((a, b) => b.at - a.at)[0]?.t || '';
   const shared = units.some(u => new Set(u.js.map(j => j.t).filter(Boolean)).size > 1);
-  if (units.length > 1) {
-    if (units.length !== autoGroups(c, s)) p.g = units.length; else delete p.g;
-    p.gi = true;
-  } else if (p.gi) { delete p.g; delete p.gi; }
+  /* журнали — джерело правди: скільки різних списків дітей, стільки й груп (поріг учнів тут не діє) */
+  if (units.length !== autoGroups(c, s)) { p.g = units.length; p.gi = true; }
+  else if (p.gi) { delete p.g; delete p.gi; }
+  /* жоден журнал цього предмета не має вчителя — групи вже визначено, призначення не чіпаємо */
+  if (!units.some(u => u.js.some(j => byId(S.teachers, j.t)))) { if (!p.h && !p.g) delete S.plan[base]; return { groups: units.length }; }
   for (let i = 0; i < 6; i++) delete S.assign[base + '|' + i];
   const g = groupsOf(c, s);
   if (units.length > 1) units.forEach((u, i) => { const t = teacherOf(u); if (t && i < g) S.assign[base + '|' + i] = t; });
