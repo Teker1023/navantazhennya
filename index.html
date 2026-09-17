@@ -11,155 +11,331 @@
 <title>Навантаження школи</title>
 <style>
 :root{
-  --bg:#F1F3F7; --surface:#FFFFFF; --raise:#F7F8FB; --ink:#161B26; --muted:#5E6677; --line:#DADFE8;
-  --accent:#2155C9; --accent-ink:#FFFFFF; --accent-soft:#E2EAFB;
-  --ok:#11764E; --ok-soft:#DDF1E7; --warn:#9A5B00; --warn-soft:#FBEFD9; --bad:#BF3326; --bad-soft:#FBE3E0;
-  --display:"Bahnschrift SemiCondensed","Bahnschrift","Segoe UI",system-ui,sans-serif;
-  --body:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  --bg:#EEF1F6; --surface:#FFFFFF; --raise:#F6F8FB; --sunk:#E9EDF3; --ink:#141A26; --ink2:#394253; --muted:#687386; --line:#DDE2EA; --line2:#C9D0DB;
+  --accent:#2457D6; --accent-ink:#FFFFFF; --accent-soft:#E6EDFC; --accent-line:#B9CBF5;
+  --ok:#127A50; --ok-soft:#DFF3E9; --warn:#9A5A00; --warn-soft:#FDF1DC; --warn-line:#E9BF74; --bad:#C0392B; --bad-soft:#FCE6E3;
+  --side:#10182A; --side-ink:#E7ECF5; --side-muted:#8E9AB0; --side-hover:#1B2540; --side-active:#24315A;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 4px 16px rgba(16,24,40,.05);
+  --display:"Bahnschrift SemiCondensed","Bahnschrift","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --body:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#0F131A; --surface:#171C25; --raise:#1D2330; --ink:#E5E9F0; --muted:#98A1B3; --line:#2B3342;
-    --accent:#7FA6F5; --accent-ink:#0B1221; --accent-soft:#1D2A45;
-    --ok:#5CCB98; --ok-soft:#15302A; --warn:#EDAA45; --warn-soft:#33270F; --bad:#FF7B6E; --bad-soft:#3A1E1B;
+    --bg:#0C1017; --surface:#151B26; --raise:#1A2130; --sunk:#10151E; --ink:#E6EAF2; --ink2:#C3CAD7; --muted:#8F9AAE; --line:#273042; --line2:#34405A;
+    --accent:#7EA4FA; --accent-ink:#0A1224; --accent-soft:#1B2847; --accent-line:#34508F;
+    --ok:#5ACB96; --ok-soft:#132E24; --warn:#EDAE4E; --warn-soft:#33260F; --warn-line:#7A5A22; --bad:#FF8173; --bad-soft:#3A1D1A;
+    --side:#0A0E15; --side-hover:#141B28; --side-active:#1B2640;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0F131A; --surface:#171C25; --raise:#1D2330; --ink:#E5E9F0; --muted:#98A1B3; --line:#2B3342;
-  --accent:#7FA6F5; --accent-ink:#0B1221; --accent-soft:#1D2A45;
-  --ok:#5CCB98; --ok-soft:#15302A; --warn:#EDAA45; --warn-soft:#33270F; --bad:#FF7B6E; --bad-soft:#3A1E1B;
+  --bg:#0C1017; --surface:#151B26; --raise:#1A2130; --sunk:#10151E; --ink:#E6EAF2; --ink2:#C3CAD7; --muted:#8F9AAE; --line:#273042; --line2:#34405A;
+  --accent:#7EA4FA; --accent-ink:#0A1224; --accent-soft:#1B2847; --accent-line:#34508F;
+  --ok:#5ACB96; --ok-soft:#132E24; --warn:#EDAE4E; --warn-soft:#33260F; --warn-line:#7A5A22; --bad:#FF8173; --bad-soft:#3A1D1A;
+  --side:#0A0E15; --side-hover:#141B28; --side-active:#1B2640;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--body)}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.5 var(--body);-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
-:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 [hidden]{display:none!important}
-h1,h2,h3{font-family:var(--display);font-weight:600;margin:0}
-h2{font-size:22px}
-h3{font-size:17px}
+h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;letter-spacing:-.005em}
 p{margin:0}
-.muted{color:var(--muted)}
-.ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.muted{color:var(--muted)} .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+.num{font-variant-numeric:tabular-nums}
 
-.top{position:sticky;top:0;z-index:30;background:var(--surface);border-bottom:1px solid var(--line)}
-.top .in{max-width:1400px;margin:0 auto;padding:10px 16px 0;display:flex;flex-direction:column;gap:8px}
-.brand{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.brand h1{font-size:22px}
-.brand #schoolLbl{color:var(--muted)}
-#saveState{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px}
-#tabs{display:flex;gap:2px;overflow-x:auto}
-#tabs button{border:0;background:none;padding:9px 12px 11px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
-#tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
-#tabs button b{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:99px;background:var(--bad);color:#fff;font-size:11px;line-height:18px}
+/* ---------- каркас ---------- */
+.app{display:grid;grid-template-columns:268px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;padding:18px 12px;gap:4px;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:11px;padding:4px 8px 18px}
+.logo{width:38px;height:38px;border-radius:10px;background:var(--accent);display:grid;place-items:center;flex:none}
+.logo svg.i{width:22px;height:22px;stroke:#fff}
+.brand b{display:block;font:600 19px/1.1 var(--display);color:#fff}
+.brand span{display:block;font-size:12px;color:var(--side-muted);margin-top:2px}
+.nav-h{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--side-muted);font-weight:600;padding:14px 10px 6px}
+.nav-sep{height:1px;background:rgba(255,255,255,.08);margin:10px 8px}
+.nav{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;color:var(--side-ink);text-align:left;padding:9px 10px;border-radius:10px;position:relative}
+.nav:hover{background:var(--side-hover)}
+.nav[aria-current="page"]{background:var(--side-active)}
+.nav[aria-current="page"]::before{content:"";position:absolute;left:-12px;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:#7EA4FA}
+.nav-i{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;font:600 14px/1 var(--display);border:1.5px solid #3A4661;color:var(--side-muted)}
+.nav.plain .nav-i{border:0}
+.nav.ok .nav-i{background:#1D7A52;border-color:#1D7A52;color:#fff}
+.nav.warn .nav-i{border-color:#E0A340;color:#F2BD66}
+.nav[aria-current="page"] .nav-i{border-color:#7EA4FA;color:#fff}
+.nav.ok[aria-current="page"] .nav-i{border-color:#1D7A52}
+.nav-i svg.i{width:16px;height:16px}
+.nav-t{display:flex;flex-direction:column;min-width:0}
+.nav-t b{font-weight:600;font-size:14.5px}
+.nav-t small{font-size:12px;color:var(--side-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav.warn .nav-t small{color:#F2BD66}
+.nav.ok .nav-t small{color:#7FD3A9}
+.side-foot{margin-top:auto;padding:14px 10px 2px;font-size:12.5px;color:var(--side-muted);display:flex;flex-direction:column;gap:8px;border-top:1px solid rgba(255,255,255,.08)}
+.side-foot .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#3FBF84;margin-right:7px;vertical-align:1px}
+.side-foot .dot.bad{background:#FF6F61}
+.side-foot .btn{align-self:flex-start}
 
-main{max-width:1400px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.content{min-width:0;padding:28px 36px 48px}
+#banner,#view{max-width:1180px;margin:0 auto}
+#banner{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+#view{display:flex;flex-direction:column;gap:16px}
+
+/* ---------- заголовок сторінки ---------- */
+.phead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px 24px;flex-wrap:wrap;padding-bottom:4px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.phead h1{font-size:32px;line-height:1.1}
+.lead{color:var(--ink2);max-width:700px;margin-top:6px;font-size:15px}
+.pactions{display:flex;gap:8px;flex-wrap:wrap}
+.pfoot{display:flex;justify-content:space-between;gap:12px;margin-top:8px;padding-top:18px;border-top:1px solid var(--line)}
+.pfoot .btn{min-height:42px}
+
+/* ---------- картки, кнопки, поля ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow);min-width:0}
 .card > header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card > header h2{font-size:20px}
+.card > header h3{font-size:17px}
 .card > header .sp{flex:1}
-
-.btn{min-height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-weight:600;white-space:nowrap}
+.card .sub{color:var(--muted);font-size:13.5px;margin-top:-8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:0 15px;border-radius:9px;border:1px solid var(--line2);background:var(--surface);font-weight:600;white-space:nowrap;color:var(--ink)}
 .btn:hover{background:var(--raise)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.warn{background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn)}
 .btn.danger{color:var(--bad)}
-.btn.small{min-height:30px;padding:0 10px;font-size:13px}
-.btn.warn{background:var(--warn-soft);border-color:var(--warn-soft);color:var(--warn)}
-.x{border:0;background:none;color:var(--muted);font-size:18px;line-height:1;padding:4px 8px;border-radius:6px}
+.btn.ghost{border-color:transparent;background:none;color:var(--ink2)}
+.btn.ghost:hover{background:var(--sunk)}
+.btn.small{min-height:31px;padding:0 11px;font-size:13px;border-radius:8px}
+.btn svg.i{width:17px;height:17px}
+.x{border:0;background:none;color:var(--muted);width:32px;height:32px;border-radius:8px;display:inline-grid;place-items:center;padding:0}
 .x:hover{background:var(--bad-soft);color:var(--bad)}
-
-input[type=text],input[type=number],input:not([type]),select,textarea{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px 8px;min-height:34px}
-textarea{width:100%;min-height:110px;resize:vertical}
+.x:disabled{opacity:.3;pointer-events:none}
+.x.plain:hover{background:var(--sunk);color:var(--ink)}
+input[type=text],input[type=number],input:not([type]),select,textarea{border:1px solid var(--line2);background:var(--surface);border-radius:8px;padding:6px 10px;min-height:36px;width:100%}
+input:hover,select:hover,textarea:hover{border-color:var(--muted)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea{min-height:120px;resize:vertical;line-height:1.5}
 input[type=number]{font-variant-numeric:tabular-nums}
-.form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.form label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600}
-.form label input,.form label select{color:var(--ink);font-weight:400;font-size:14px}
-.w4{width:70px}.w6{width:90px}.w12{width:180px}.w20{width:300px}.grow{flex:1 1 220px}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin:0}
+.field{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--muted);font-weight:600;min-width:0}
+.field input,.field select,.field textarea{color:var(--ink);font-weight:400;font-size:14.5px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row > .field{flex:1 1 160px}
+.row > .field.s{flex:0 0 110px}
+.hint{font-size:13px;color:var(--muted)}
 
-.tblwrap{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:calc(100vh - 230px)}
-table.tbl{border-collapse:collapse;width:100%;background:var(--surface)}
-.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:middle}
-.tbl thead th{position:sticky;top:0;z-index:2;background:var(--raise);font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
-.tbl td.num,.tbl th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.tbl input{min-height:30px;padding:3px 7px}
-.tbl tr.unassigned td{background:var(--warn-soft)}
-.tbl tbody tr.teacher-first td{border-top:2px solid var(--line)}
-
-/* grid of plan */
-.grid th,.grid td{border-right:1px solid var(--line);padding:3px 4px;text-align:center}
-.grid thead th{padding:6px 4px}
-.grid thead th small,.grid .subj small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
-.grid .subj{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;min-width:210px;padding:4px 10px;font-weight:600}
-.grid thead th.subj{z-index:3;background:var(--raise)}
-.grid td.pc{min-width:76px;white-space:nowrap}
-.grid td.pc input{width:46px;text-align:center;border-color:transparent;background:var(--raise)}
-.grid td.pc input:hover{border-color:var(--line)}
-.grid td.est input{border:1.5px dashed var(--warn);background:var(--warn-soft)}
-.grid .grp{margin-left:2px;border:1px solid var(--line);background:none;border-radius:6px;font-size:11px;padding:1px 4px;color:var(--muted)}
-.grid .grp.on{background:var(--accent-soft);border-color:var(--accent-soft);color:var(--accent);font-weight:700}
-.grid .grp.man{border-style:solid;border-color:var(--accent)}
-.grid tfoot td,.grid tfoot th{position:sticky;bottom:0;background:var(--raise);font-weight:700;font-variant-numeric:tabular-nums}
-.grid tfoot tr:first-child td,.grid tfoot tr:first-child th{bottom:29px}
-.grid td.tot{font-weight:700;font-variant-numeric:tabular-nums}
-
-.drop{border:2px dashed var(--line);border-radius:12px;padding:22px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;background:var(--raise);cursor:pointer}
-.drop b{font-size:16px}
-.drop span{color:var(--muted)}
-body.dragging .drop{border-color:var(--accent);background:var(--accent-soft)}
-body.dragging::after{content:"Відпустіть файли, щоб імпортувати";position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:rgba(33,85,201,.18);font:600 26px var(--display);color:var(--accent);pointer-events:none}
-
-.notice{border-radius:10px;padding:10px 14px;background:var(--accent-soft)}
-.notice.warn{background:var(--warn-soft)}
-.notice.ok{background:var(--ok-soft)}
-#banner{max-width:1400px;margin:0 auto;padding:12px 16px 0;display:flex;flex-direction:column;gap:8px}
-#banner .notice{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
-.notice ul{margin:6px 0 0;padding-left:20px}
-
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
-.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
-.tile span{font-size:12px;color:var(--muted);font-weight:600}
-.tile b{display:block;font:600 30px/1.1 var(--display);font-variant-numeric:tabular-nums}
-.bar{height:8px;border-radius:99px;background:var(--raise);overflow:hidden;border:1px solid var(--line)}
-.bar i{display:block;height:100%;background:var(--ok)}
-
-.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px}
-.steps li b{font-family:var(--display);font-size:16px}
-.chk{display:grid;grid-template-columns:auto 1fr auto;gap:8px 12px;align-items:center}
-.pill{font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--raise);color:var(--muted);white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--sunk);color:var(--ink2);white-space:nowrap}
 .pill.ok{background:var(--ok-soft);color:var(--ok)}
 .pill.warn{background:var(--warn-soft);color:var(--warn)}
 .pill.bad{background:var(--bad-soft);color:var(--bad)}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chips label{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:99px;padding:3px 10px;cursor:pointer}
-.chips label:has(input:checked){background:var(--accent-soft);border-color:var(--accent)}
-.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px;align-items:start}
+.pill.blue{background:var(--accent-soft);color:var(--accent)}
+.pill svg.i{width:14px;height:14px}
 
-#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;font-weight:600;z-index:100;opacity:0;transition:opacity .2s;pointer-events:none}
-#toast.show{opacity:1}
+.notice{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-radius:12px;padding:12px 16px;background:var(--accent-soft);border:1px solid var(--accent-line)}
+.notice.warn{background:var(--warn-soft);border-color:var(--warn-line)}
+.notice.ok{background:var(--ok-soft);border-color:transparent}
+.notice > svg.i{width:20px;height:20px}
+.notice.warn > svg.i{color:var(--warn)}
+.notice.ok > svg.i{color:var(--ok)}
+.notice .grow{flex:1 1 280px}
 
+details.more{border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow)}
+details.more > summary{list-style:none;cursor:pointer;padding:14px 18px;font-weight:600;display:flex;align-items:center;gap:10px}
+details.more > summary::-webkit-details-marker{display:none}
+details.more > summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s;flex:none}
+details.more[open] > summary::after{transform:rotate(-135deg)}
+details.more > summary small{font-weight:400;color:var(--muted)}
+details.more > summary svg.i{color:var(--accent)}
+details.more > .in{padding:0 18px 18px;display:flex;flex-direction:column;gap:12px}
+
+.seg{display:inline-flex;background:var(--sunk);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:none;padding:6px 13px;border-radius:8px;font-weight:600;color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(16,24,40,.14)}
+
+/* ---------- таблиці ---------- */
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table.tbl{border-collapse:separate;border-spacing:0;width:100%;background:var(--surface)}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:middle}
+.tbl tbody tr:last-child > *{border-bottom:0}
+.tbl thead th{background:var(--raise);font-size:11.5px;color:var(--muted);font-weight:600;white-space:nowrap;text-transform:uppercase;letter-spacing:.05em}
+.tbl td.num,.tbl th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl input,.tbl select{min-height:34px}
+.tbl tbody tr:hover > td{background:var(--raise)}
+.tbl .grouprow th{background:var(--sunk);font:600 16px/1.2 var(--display);text-transform:none;letter-spacing:0;color:var(--ink);padding:10px 12px}
+.tbl .grouprow th span{font:400 13px var(--body);color:var(--muted);margin-left:10px}
+.tbl tr.unassigned > td{background:var(--warn-soft)}
+.tbl tr.unassigned > td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+.tbl tr.unassigned:hover > td{background:var(--warn-soft)}
+.cellname{font-weight:600}
+.cellsub{display:block;font-size:12.5px;color:var(--muted);font-weight:400}
+
+/* ---------- навчальний план ---------- */
+.toolbar{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap}
+.toolbar .sp{flex:1}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.sw{width:24px;height:18px;border-radius:5px;border:1.5px solid var(--line2);background:var(--surface)}
+.sw.est{border:1.5px dashed var(--warn);background:var(--warn-soft)}
+.sw.grp{width:auto;height:auto;border-radius:99px;font-size:11px;font-weight:600;padding:1px 7px;background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--accent)}
+.gridwrap{overflow:auto;max-height:calc(100vh - 260px);border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table.grid{border-collapse:separate;border-spacing:0;background:var(--surface);min-width:100%}
+.grid th,.grid td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;text-align:center;vertical-align:middle}
+.grid thead th{position:sticky;top:0;z-index:2;background:var(--raise);padding:9px 8px;font:600 16px/1.2 var(--display);white-space:nowrap}
+.grid thead th small{display:block;font:400 11.5px/1.3 var(--body);color:var(--muted)}
+.grid .subj{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;min-width:230px;padding:8px 14px;font-weight:600;font-size:14px}
+.grid .subj small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.grid thead th.subj{z-index:3;background:var(--raise);font:600 11.5px/1 var(--body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);vertical-align:bottom}
+.grid td.pc{min-width:96px;padding:7px 8px}
+.cell{display:flex;flex-direction:column;align-items:center;gap:5px}
+.cell input{width:60px;min-height:34px;text-align:center;padding:4px;border:1.5px solid transparent;background:var(--sunk);border-radius:8px;font-weight:600;font-size:15px;-moz-appearance:textfield;box-shadow:none}
+.cell input::-webkit-outer-spin-button,.cell input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.cell input:hover{border-color:var(--line2)}
+.cell input:focus{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px var(--accent-soft)}
+.cell input:not(:placeholder-shown){background:var(--surface);border-color:var(--line2)}
+.cell.est input,.cell.est input:not(:placeholder-shown){border:1.5px dashed var(--warn);background:var(--warn-soft)}
+.grp{border:1px solid var(--line);background:var(--surface);border-radius:99px;font-size:11.5px;line-height:1;padding:3px 8px;color:var(--muted);font-weight:600}
+.grp:hover{border-color:var(--muted)}
+.grp.on{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.grp.man{box-shadow:0 0 0 1.5px var(--accent) inset}
+.grid tbody tr:hover > *{background:var(--raise)}
+.grid tfoot th,.grid tfoot td{position:sticky;background:var(--raise);font-weight:700;font-variant-numeric:tabular-nums;padding:9px 8px;font-size:14px}
+.grid tfoot tr:nth-child(1) > *{bottom:40px}
+.grid tfoot tr:nth-child(2) > *{bottom:0}
+.grid tfoot .subj{font-weight:600;z-index:3}
+.grid td.tot{font-weight:700;font-variant-numeric:tabular-nums;padding:0 14px;background:var(--raise)}
+
+/* ---------- класи: завантаження ---------- */
+.drop{border:2px dashed var(--line2);border-radius:14px;padding:30px 24px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;background:var(--surface);cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover{border-color:var(--accent);background:var(--accent-soft)}
+.drop > svg.i{width:42px;height:42px;color:var(--accent);stroke-width:1.5}
+.drop b{font:600 21px/1.2 var(--display)}
+.drop > div > span{color:var(--muted)}
+.drop.compact{flex-direction:row;padding:14px 18px;text-align:left;gap:14px}
+.drop.compact > svg.i{width:28px;height:28px}
+.drop.compact b{font-size:16px}
+.drop.compact > div > span{display:block;font-size:13px}
+body.dragging .drop{border-color:var(--accent);background:var(--accent-soft)}
+body.dragging::after{content:"Відпустіть файли, щоб завантажити";position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:rgba(36,87,214,.16);font:600 28px var(--display);color:var(--accent);pointer-events:none}
+.howto{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;counter-reset:h;width:100%;text-align:left}
+.howto li{counter-increment:h;display:flex;gap:10px;align-items:flex-start;background:var(--raise);border-radius:10px;padding:10px 12px;font-size:13.5px;color:var(--ink2)}
+.howto li::before{content:counter(h);flex:none;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font:600 12px/22px var(--display);text-align:center}
+
+.report{display:flex;flex-direction:column}
+.ir{display:grid;grid-template-columns:70px minmax(140px,230px) 1fr;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.ir:last-child{border-bottom:0}
+.ir-c{font:600 18px/1 var(--display)}
+.ir-s{font-weight:600}
+.ir-f{display:flex;flex-wrap:wrap;gap:6px}
+.ir.err{grid-template-columns:1fr;color:var(--bad)}
+
+/* ---------- старт ---------- */
+.timeline{display:flex;flex-direction:column;gap:10px}
+.tl{display:grid;grid-template-columns:44px 1fr auto 20px;gap:16px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px 18px;box-shadow:var(--shadow);width:100%;color:var(--ink)}
+.tl:hover{border-color:var(--accent-line);background:var(--raise)}
+.tl > svg.i{color:var(--muted)}
+.tl-n{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:600 18px/1 var(--display);background:var(--sunk);color:var(--muted)}
+.tl.ok .tl-n{background:var(--ok);color:#fff}
+.tl.warn .tl-n{background:var(--warn-soft);color:var(--warn);box-shadow:inset 0 0 0 1.5px var(--warn-line)}
+.tl-b b{display:block;font:600 18px/1.2 var(--display)}
+.tl-b span{color:var(--muted);font-size:14px}
+.cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start}
+.split{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+.split > .stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.fact{background:var(--raise);border-radius:12px;padding:14px 16px}
+.fact b{display:block;font:600 21px/1.15 var(--display);margin-bottom:4px}
+.fact span{color:var(--muted);font-size:13.5px}
+.mock{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--raise);display:flex;flex-direction:column;gap:10px;min-width:250px}
+.mock-t{font:600 17px/1 var(--display);margin-bottom:2px}
+.mock label{display:flex;align-items:center;gap:9px;font-size:14px}
+.mock label i{width:18px;height:18px;border-radius:5px;background:var(--accent);display:grid;place-items:center;flex:none}
+.mock label i svg.i{width:13px;height:13px;stroke:#fff;stroke-width:2.6}
+.mock label small{color:var(--muted)}
+.mriya{display:flex;gap:20px;flex-wrap:wrap;align-items:stretch}
+.mriya .howto{flex:1 1 340px;grid-template-columns:1fr}
+
+/* ---------- навантаження ---------- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
+.tile span{font-size:13px;color:var(--muted);font-weight:600}
+.tile b{font:600 34px/1 var(--display);font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.meter{position:relative;height:8px;border-radius:99px;background:var(--sunk);min-width:90px}
+.meter i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--accent)}
+.meter i.ok{background:var(--ok)} .meter i.warn{background:var(--warn)} .meter i.bad{background:var(--bad)}
+.meter em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink2);opacity:.5;border-radius:2px}
+.loadcell{display:flex;flex-direction:column;gap:6px;min-width:140px}
+.loadcell b{font-variant-numeric:tabular-nums}
+.teach{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;padding:3px 0}
+.teach > b{font-weight:600;margin-right:4px}
+.chip{font-size:12.5px;padding:2px 8px;border-radius:6px;background:var(--sunk);color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.chip b{font-weight:700;color:var(--ink)}
+.bigprog{display:flex;align-items:center;gap:14px 20px;flex-wrap:wrap}
+.bigprog .val{font:600 28px/1 var(--display);white-space:nowrap}
+.bigprog .val small{font:400 14px var(--body);color:var(--muted);margin-left:6px}
+.bigprog .bar{flex:1 1 220px;height:10px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chips label{display:flex;align-items:center;gap:7px;border:1px solid var(--line2);border-radius:99px;padding:5px 12px;cursor:pointer;font-weight:600}
+.chips label:has(input:checked){background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:40px 20px}
+.empty > svg.i{width:44px;height:44px;color:var(--muted);stroke-width:1.4}
+.empty b{font:600 21px var(--display)}
+.empty p{color:var(--muted);max-width:480px}
+
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);background:var(--ink);color:var(--surface);padding:11px 18px;border-radius:10px;font-weight:600;z-index:100;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%)}
+
+@media (max-width:1100px){ .split{grid-template-columns:1fr} }
+@media (max-width:980px){
+  .app{grid-template-columns:1fr}
+  .side{position:sticky;top:0;z-index:40;height:auto;flex-direction:row;align-items:center;padding:8px 10px;overflow-x:auto;gap:2px}
+  .brand{padding:0 8px 0 2px}
+  .brand div,.nav-h,.nav-sep,.side-foot,.nav-t small{display:none}
+  #steps{display:flex;gap:2px}
+  .nav{width:auto;padding:7px 9px;gap:8px}
+  .nav[aria-current="page"]::before{display:none}
+  .nav-t b{font-size:13.5px;white-space:nowrap}
+  .content{padding:18px 16px 40px}
+  .phead h1{font-size:26px}
+  .ir{grid-template-columns:64px 1fr}
+  .ir-f{grid-column:1 / -1}
+  .tl{grid-template-columns:40px 1fr}
+  .tl > .pill,.tl > svg.i{display:none}
+}
 @media print{
-  body{background:#fff;color:#000}
-  .top,.noprint,#toast{display:none!important}
-  main{padding:0;max-width:none}
-  .card{border:0;padding:0}
-  .tblwrap{max-height:none;overflow:visible;border:0}
-  .tbl thead th{position:static}
-  .tbl th,.tbl td{border:1px solid #999;padding:3px 6px}
+  body{background:#fff;color:#000;font-size:12px}
+  .side,.noprint,#banner,#toast,.pfoot,.pactions{display:none!important}
+  .app{display:block}
+  .content{padding:0}
+  .card,.tile{border:0;box-shadow:none;padding:0}
+  .tblwrap{overflow:visible;border:0}
+  .tbl th,.tbl td{border:1px solid #999;padding:4px 6px}
+  .meter{display:none}
 }
 </style>
 </head>
 <body>
-<header class="top">
-  <div class="in">
-    <div class="brand"><h1>Навантаження</h1><span id="schoolLbl"></span><div id="saveState"></div></div>
-    <nav id="tabs"></nav>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo"><svg class="i" viewBox="0 0 24 24"><path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/></svg></span><div><b>Навантаження</b><span id="schoolLbl"></span></div></div>
+    <nav id="steps" aria-label="Кроки"></nav>
+    <div class="side-foot" id="saveState"></div>
+  </aside>
+  <div class="content">
+    <div id="banner" hidden></div>
+    <main id="view"></main>
   </div>
-</header>
-<div id="banner" hidden></div>
-<main id="view"></main>
+</div>
 <div id="toast" role="status"></div>
 <input type="file" id="fileXlsx" multiple accept=".xlsx,.zip" hidden>
 <input type="file" id="fileJson" accept=".json" hidden>
@@ -265,9 +441,10 @@ async function writeFolder() {
 }
 function showSave() {
   const el = $('#saveState'); if (!el) return;
-  let h = saveErr ? `<span class="bad">● ${saveErr}</span>` : `<span class="ok">● Збережено${savedAt ? ' о ' + hm(savedAt) : ''}</span>`;
-  if (DIR && dirOk) h += ` <span class="muted">· копія в папці «${esc(DIR.name)}»${dirAt ? ' о ' + hm(dirAt) : ''}</span>`;
-  else if (DIR) h += ` <button class="btn small warn" data-act="reconnectDir">Дозволити копії в папку «${esc(DIR.name)}»</button>`;
+  let h = saveErr ? `<span><i class="dot bad"></i>${saveErr}</span>` : `<span><i class="dot"></i>Збережено${savedAt ? ' о ' + hm(savedAt) : ''}</span>`;
+  if (DIR && dirOk) h += `<span>Копія в папці «${esc(DIR.name)}»${dirAt ? ' о ' + hm(dirAt) : ''}</span>`;
+  else if (DIR) h += `<button class="btn small warn" data-act="reconnectDir">Дозволити копії в папку</button>`;
+  else if (canDir) h += `<span>Папку для копій не вибрано</span>`;
   el.innerHTML = h;
   showBanner();
 }
@@ -656,22 +833,89 @@ function exportXlsx() {
 }
 
 /* ---------- вигляд ---------- */
-const TABS = [['help', 'Як це працює'], ['classes', '1. Класи'], ['plan', '2. Навчальний план'], ['teachers', '3. Вчителі'], ['dist', '4. Розподіл'], ['load', '5. Навантаження'], ['settings', 'Дані і копії']];
+const ICONS = {
+  upload: '<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
+  download: '<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  alert: '<path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/>',
+  classes: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.5 3.5 0 010 6.4M18.5 14.8c1.6.8 2.6 2.5 3 5.2"/>',
+  plan: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M9 9.5V20M15 9.5V20"/>',
+  teacher: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
+  dist: '<path d="M4 7h12M12 3l4 4-4 4M20 17H8M12 13l-4 4 4 4"/>',
+  load: '<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
+  data: '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.6-1.5 1.1-1.5 2.2M12 17h.01"/>',
+  right: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  left: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+  chevron: '<path d="M9 6l6 6-6 6"/>',
+  folder: '<path d="M3 6.5A1.5 1.5 0 014.5 5H9l2 2.5h8.5A1.5 1.5 0 0121 9v9.5a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18.5z"/>',
+  print: '<path d="M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/>',
+  restore: '<path d="M4 12a8 8 0 108-8 8.2 8.2 0 00-6 2.7M4 4v4h4"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  file: '<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/>'
+};
+const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+const plural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; };
+const shortName = n => { const w = String(n).split(/\s+/); return w.length > 1 ? w[0] + ' ' + w.slice(1).map(x => x[0] + '.').join(' ') : n; };
+
+const TABS = ['help', 'classes', 'plan', 'teachers', 'dist', 'load', 'settings'];
 let TAB = 'help';
-try { TAB = localStorage.getItem(LS + ':tab') || (S.classes.length ? 'classes' : 'help'); } catch (e) {}
+try { TAB = localStorage.getItem(LS + ':tab') || 'help'; } catch (e) {}
+if (!TABS.includes(TAB)) TAB = 'help';
 const V = {};
 const dist = { only: false, cls: '' }, bulk = { s: '', t: '', grp: 'free', cls: new Set() };
+let planAll = false;
+
+function progress() {
+  const U = units(), all = U.reduce((a, u) => a + u.h, 0), freeH = U.filter(u => !u.t).reduce((a, u) => a + u.h, 0);
+  const cIds = new Set(S.classes.map(c => c.id)), sIds = new Set(S.subjects.map(s => s.id));
+  const est = Object.entries(S.plan).filter(([k, p]) => p.est && p.h && cIds.has(k.split('|')[0]) && sIds.has(k.split('|')[1])).length;
+  const P = S.subjects.filter(s => S.classes.some(c => hoursOf(c, s))).length;
+  return { C: S.classes.length, T: S.teachers.length, P, est, all, freeH, U };
+}
+const STEPS = [
+  { k: 'classes', t: 'Класи', d: 'Перетягніть файли журналів з Мрії — програма візьме класи, учнів, вчителів і дати уроків.',
+    s: p => p.C ? [`${p.C} ${plural(p.C, 'клас', 'класи', 'класів')}`, 'ok'] : ['завантажте журнали', 'todo'] },
+  { k: 'plan', t: 'Навчальний план', d: 'Перевірте години на тиждень для кожного предмета й класу. Жовті — підказки, їх треба звірити.',
+    s: p => !p.P ? ['впишіть години', 'todo'] : p.est ? [`${p.est} ${plural(p.est, 'підказка', 'підказки', 'підказок')} перевірити`, 'warn'] : [`${p.P} ${plural(p.P, 'предмет', 'предмети', 'предметів')}`, 'ok'] },
+  { k: 'teachers', t: 'Вчителі', d: 'Вчителі з журналів додаються самі. Додайте тих, кого нема, і гуртки чи індивідуальне навчання.',
+    s: p => p.T ? [`${p.T} ${plural(p.T, 'вчитель', 'вчителі', 'вчителів')}`, 'ok'] : ['додайте вчителів', 'todo'] },
+  { k: 'dist', t: 'Розподіл', d: 'Кожній годині — свій вчитель. Жовті рядки ще без вчителя.',
+    s: p => !p.all ? ['спершу план', 'todo'] : p.freeH ? [`${fmt(p.freeH)} год без вчителя`, 'warn'] : ['усе розподілено', 'ok'] },
+  { k: 'load', t: 'Навантаження', d: 'Підсумок по кожному вчителю в годинах і ставках. Експорт в Excel і друк.',
+    s: p => p.all && !p.freeH ? ['готово', 'ok'] : ['підсумок', 'todo'] }
+];
 
 function go(tab) { TAB = tab; try { localStorage.setItem(LS + ':tab', tab); } catch (e) {} render(); scrollTo(0, 0); }
-function render() {
-  const free = units().filter(u => !u.t).length;
-  $('#tabs').innerHTML = TABS.map(([k, t]) => `<button data-tab="${k}" aria-selected="${k === TAB}">${t}${k === 'dist' && free && S.teachers.length ? `<b>${free}</b>` : ''}</button>`).join('');
+function renderNav() {
+  const p = progress();
+  const item = (k, lead, title, sub, st) => `<button class="nav ${st}" data-tab="${k}" aria-current="${k === TAB ? 'page' : 'false'}"><span class="nav-i">${lead}</span><span class="nav-t"><b>${title}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></button>`;
+  $('#steps').innerHTML = item('help', ic('help'), 'Як це працює', '', 'plain') + '<div class="nav-h">Кроки</div>' +
+    STEPS.map((s, i) => { const [txt, st] = s.s(p); return item(s.k, st === 'ok' ? ic('check') : i + 1, s.t, txt, st); }).join('') +
+    '<div class="nav-sep"></div>' + item('settings', ic('data'), 'Дані і копії', '', 'plain');
   $('#schoolLbl').textContent = [S.school, S.year + ' н. р.'].filter(Boolean).join(' · ');
-  $('#view').innerHTML = (V[TAB] || V.help)();
+}
+function render() {
+  renderNav();
+  $('#view').innerHTML = (V[TAB] || V.help)() + pageFoot();
   if (TAB === 'plan') planTotals();
   if (TAB === 'settings') renderSnaps();
   showSave();
 }
+function pageHead(title, lead, actions = '') {
+  const i = STEPS.findIndex(s => s.k === TAB);
+  return `<header class="phead"><div>${i >= 0 ? `<div class="eyebrow">Крок ${i + 1} з ${STEPS.length}</div>` : ''}<h1>${title}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}</div>${actions ? `<div class="pactions">${actions}</div>` : ''}</header>`;
+}
+function pageFoot() {
+  const i = STEPS.findIndex(s => s.k === TAB);
+  if (i < 0) return '';
+  const prev = STEPS[i - 1], next = STEPS[i + 1];
+  return `<nav class="pfoot noprint">${prev ? `<button class="btn ghost" data-go="${prev.k}">${ic('left')} ${prev.t}</button>` : '<span></span>'}${next ? `<button class="btn primary" data-go="${next.k}">Далі: ${next.t} ${ic('right')}</button>` : ''}</nav>`;
+}
+const emptyState = (icon, title, text, go, label) => `<section class="card"><div class="empty">${ic(icon)}<b>${title}</b><p>${text}</p>${go ? `<button class="btn primary" data-go="${go}">${label} ${ic('right')}</button>` : ''}</div></section>`;
 
 /* нагадування про копії: папка не вибрана / давно не було копії файлом */
 const DAY = 86400000;
@@ -680,136 +924,141 @@ function showBanner() {
   const el = $('#banner'); if (!el) return;
   const msgs = [];
   if (S.classes.length || S.teachers.length) {
-    if (canDir && !DIR) msgs.push(`<b>Не вибрано папку для автокопій.</b> Якщо очистити дані браузера, усе зникне. <button class="btn small primary" data-act="pickDir">Вибрати папку…</button>`);
-    else if (DIR && !dirOk) msgs.push(`<b>Копії в папку «${esc(DIR.name)}» не записуються</b> — браузер просить дозвіл. <button class="btn small primary" data-act="reconnectDir">Дозволити</button>`);
+    if (canDir && !DIR) msgs.push(`${ic('folder')}<span class="grow"><b>Не вибрано папку для автокопій.</b> Якщо очистити дані браузера, усе зникне.</span><button class="btn small primary" data-act="pickDir">Вибрати папку…</button>`);
+    else if (DIR && !dirOk) msgs.push(`${ic('folder')}<span class="grow"><b>Копії в папку «${esc(DIR.name)}» не записуються</b> — браузер просить дозвіл.</span><button class="btn small primary" data-act="reconnectDir">Дозволити</button>`);
     if (Date.now() > snoozeUntil && Date.now() - lastExport > 7 * DAY)
-      msgs.push(`<b>${lastExport ? `Копії файлом не було ${Math.floor((Date.now() - lastExport) / DAY)} дн.` : 'Ще не було жодної копії файлом.'}</b> Збережіть і перешліть її (пошта, Telegram, флешка). <button class="btn small primary" data-act="backup">Завантажити копію</button> <button class="btn small" data-act="snooze">Нагадати завтра</button>`);
+      msgs.push(`${ic('download')}<span class="grow"><b>${lastExport ? `Копії файлом не було ${Math.floor((Date.now() - lastExport) / DAY)} дн.` : 'Ще не було жодної копії файлом.'}</b> Збережіть і перешліть її (пошта, Telegram, флешка).</span><button class="btn small primary" data-act="backup">Завантажити копію</button><button class="btn small ghost" data-act="snooze">Нагадати завтра</button>`);
   }
   el.hidden = !msgs.length;
   el.innerHTML = msgs.map(m => `<div class="notice warn noprint">${m}</div>`).join('');
 }
-const empty = (msg, tab, label) => `<section class="card"><p>${msg}</p><div><button class="btn primary" data-go="${tab}">${label}</button></div></section>`;
-const tOptions = (sel, hours) => `<option value="">— не призначено —</option>` + teachersSorted().map(t => `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}${hours ? ' · ' + fmt(hours.get(t.id) || 0) + ' год' : ''}</option>`).join('');
+const tOptions = (sel, hours) => `<option value="">— оберіть вчителя —</option>` + teachersSorted().map(t => `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}${hours ? ' · ' + fmt(hours.get(t.id) || 0) + ' год' : ''}</option>`).join('');
 
+/* ---------- Як це працює ---------- */
 V.help = () => {
-  const C = S.classes.length, P = S.subjects.filter(s => S.classes.some(c => hoursOf(c, s))).length, T = S.teachers.length;
-  const U = units(), free = U.filter(u => !u.t).reduce((a, u) => a + u.h, 0), all = U.reduce((a, u) => a + u.h, 0);
-  const pill = (ok, txt) => `<span class="pill ${ok ? 'ok' : 'warn'}">${txt}</span>`;
-  return `
+  const p = progress();
+  const next = STEPS.find(s => s.s(p)[1] !== 'ok') || STEPS[STEPS.length - 1];
+  const tick = `<i>${ic('check')}</i>`;
+  return pageHead('Як скласти навантаження', 'П’ять кроків — від журналів з Мрії до готової таблиці для наказу. Статус кожного кроку видно ліворуч.',
+    `<button class="btn primary" data-go="${next.k}">${p.C ? 'Продовжити: ' + next.t : 'Почати'} ${ic('right')}</button>`) + `
+<div class="timeline">${STEPS.map((s, i) => { const [txt, st] = s.s(p); return `<button class="tl ${st}" data-go="${s.k}"><span class="tl-n">${st === 'ok' ? ic('check') : i + 1}</span><span class="tl-b"><b>${s.t}</b><span>${s.d}</span></span><span class="pill ${st === 'todo' ? '' : st}">${esc(txt)}</span>${ic('chevron')}</button>`; }).join('')}</div>
 <section class="card">
-  <h2>Як формується педагогічне навантаження</h2>
-  <ol class="steps">
-    <li><b>Класи і кількість учнів.</b> Беруться з Мрії (експорт журналу класу в Excel) або вводяться вручну. Кількість учнів потрібна, щоб визначити поділ на групи.</li>
-    <li><b>Навчальний план школи</b> — скільки годин на тиждень кожного предмета в кожному класі. Береться з освітньої програми школи, яку затверджує педрада на основі типової освітньої програми МОН. Програма може підказати години за датами уроків у журналі з Мрії, але їх треба звірити з планом.</li>
-    <li><b>Поділ на групи.</b> Іноземна мова, інформатика, технології, а в 10–11 класах і фізкультура ділять клас на групи, якщо учнів не менше ${S.splitMin} (наказ МОН № 128 від 20.02.2002; поріг можна змінити в налаштуваннях). Кожна група — окремі години вчителю.</li>
-    <li><b>Розподіл.</b> Кожну годину кожного класу (або групи) закріплюють за вчителем.</li>
-    <li><b>Навантаження вчителя</b> = сума його годин на тиждень + гуртки, індивідуальне навчання тощо. Ставка — ${S.stavka} год/тиж: ${S.stavka / 2} год = 0,5 ставки, ${S.stavka * 1.5} год = 1,5 ставки.</li>
-    <li><b>Результат</b> — таблиця для наказу про розподіл навантаження і тарифікації: експорт в Excel або друк.</li>
-  </ol>
-</section>
-<section class="card">
-  <h3>Що вже зроблено</h3>
-  <div class="chk">
-    <span>1.</span><span>Класи</span>${pill(C, C ? C + ' класів' : 'нема')}
-    <span>2.</span><span>Предмети з годинами в плані</span>${pill(P, P ? P + ' предметів' : 'нема')}
-    <span>3.</span><span>Вчителі</span>${pill(T, T ? T + ' вчителів' : 'нема')}
-    <span>4.</span><span>Розподілено годин</span>${pill(all && !free, all ? fmt(all - free) + ' з ' + fmt(all) : '—')}
+  <header><h2>Що вивантажити з Мрії</h2></header>
+  <div class="mriya">
+    <ol class="howto">
+      <li><span>Мрія → <b>Журнали</b> → клас → предмет</span></li>
+      <li><span>Кнопка <b>«Експорт»</b></span></li>
+      <li><span>Залиште <b>всі три галочки</b> — «Планування» дає ім’я вчителя</span></li>
+      <li><span>Не перейменовуйте файли і перетягніть усі разом у крок 1</span></li>
+    </ol>
+    <div class="mock" aria-hidden="true"><div class="mock-t">Експорт журналу</div>
+      <label>${tick}Відвідування <small>— учні</small></label><label>${tick}Оцінки</label><label>${tick}Планування <small>— вчитель, дати</small></label></div>
   </div>
-  <div class="form"><button class="btn primary" data-go="${!C ? 'classes' : !P ? 'plan' : !T ? 'teachers' : free ? 'dist' : 'load'}">Продовжити</button></div>
 </section>
-<section class="card notice">
-  <h3>Що вивантажити з Мрії</h3>
-  <p>Журнали → клас → предмет → «Експорт» → Excel. З кожного файлу програма бере назву класу, список учнів (кількість, хлопці/дівчата) і дати уроків. Можна перетягнути одразу багато файлів.</p>
-  <p><b>Поставте галочку «Планування»</b> — тоді програма візьме з файлу ще й вчителя та сама призначить його на цей клас. Кількість годин підказується за датами уроків, але її треба звірити з навчальним планом школи (розділ 2).</p>
-  <p>Якщо в Мрії з доступом адміністратора є експорт навчального плану або навантаження — принесіть зразок, програму можна навчити читати і його.</p>
-  <p class="muted">Прізвища учнів програма не зберігає — лише кількість учнів, хлопців і дівчат та незворотні коди, за якими порівнює списки різних журналів (щоб знайти групи). Усі дані лежать тільки на цьому комп’ютері й нікуди не надсилаються: сторінці заборонено звертатися до мережі.</p>
+<section class="card">
+  <header><h2>Як програма рахує</h2></header>
+  <div class="facts">
+    <div class="fact"><b>${S.stavka} год = 1 ставка</b><span>Навантаження вчителя — сума годин на тиждень у всіх його класах і групах.</span></div>
+    <div class="fact"><b>Групи — за учнями</b><span>Два журнали одного предмета в класі з різними дітьми — це дві групи, кожна зі своїм вчителем.</span></div>
+    <div class="fact"><b>Години — підказка</b><span>Рахуються за датами уроків у журналі. Звірте їх з навчальним планом школи.</span></div>
+    <div class="fact"><b>Прізвища не зберігаються</b><span>Лише кількість учнів і незворотні коди для порівняння списків. Дані не виходять за межі ПК.</span></div>
+  </div>
 </section>`;
 };
 
+/* ---------- 1. Класи ---------- */
+function importReport() {
+  if (!lastImport) return '';
+  const ok = lastImport.filter(r => !r.err).length;
+  const rows = lastImport.map((r, i) => {
+    if (r.err) return `<div class="ir err">${ic('alert')} ${esc(r.file)} — ${esc(r.err)}</div>`;
+    const lastOfPair = r.sid && !lastImport.slice(i + 1).some(x => x.cid === r.cid && x.sid === r.sid);
+    const c = byId(S.classes, r.cid), s = byId(S.subjects, r.sid), f = [];
+    if (r.students) f.push(`<span class="pill">${r.students} ${plural(r.students, 'учень', 'учні', 'учнів')}${r.classCount !== r.students ? ` · у класі ${r.classCount}` : ''}</span>`);
+    else f.push('<span class="pill warn">учнів не знайдено</span>');
+    if (r.est) f.push(`<span class="pill${r.planSet ? ' warn' : ''}">~${r.est} год/тиж${r.planSet ? ' → у план, перевірте' : ''}</span>`);
+    f.push(r.teacher ? `<span class="pill ok">${ic('teacher')} ${esc(shortName(r.teacher))}${r.group ? `, група ${r.group}` : ''}</span>` : '<span class="pill warn">без вчителя — потрібна галочка «Планування»</span>');
+    if (lastOfPair && c && s && r.groups > 1) f.push(`<span class="pill blue">${r.groups} групи за списками учнів</span>`);
+    if (lastOfPair && r.shared) f.push('<span class="pill warn">ті самі учні у двох вчителів — заміна? перевірте</span>');
+    return `<div class="ir"><span class="ir-c">${esc(r.cls)}</span><span class="ir-s">${esc(r.subj || '—')}${r.isNew ? ' <span class="pill blue">новий клас</span>' : ''}</span><span class="ir-f">${f.join('')}</span></div>`;
+  }).join('');
+  return `<section class="card"><header>${ic('check')}<h3>Завантажено ${ok} з ${lastImport.length} ${plural(lastImport.length, 'файлу', 'файлів', 'файлів')}</h3><span class="sp"></span><button class="x plain" data-act="closeImport" title="Сховати">${ic('x')}</button></header><div class="report">${rows}</div></section>`;
+}
 V.classes = () => {
   const list = cls();
-  const imp = lastImport ? `<div class="notice ${lastImport.some(r => r.err) ? 'warn' : 'ok'}"><header class="form"><b>Імпорт: ${lastImport.filter(r => !r.err).length} з ${lastImport.length} файлів</b><span class="grow"></span><button class="x" data-act="closeImport" title="Закрити">×</button></header><ul>` +
-    lastImport.map((r, i) => {
-      if (r.err) return `<li class="bad">${esc(r.file)} — ${esc(r.err)}</li>`;
-      /* підсумок про групи — лише в останньому рядку цього класу й предмета, коли всі журнали вже враховано */
-      const lastOfPair = r.sid && !lastImport.slice(i + 1).some(x => x.cid === r.cid && x.sid === r.sid);
-      const c = byId(S.classes, r.cid), s = byId(S.subjects, r.sid);
-      const tail = !lastOfPair || !c || !s ? '' :
-        (r.groups > 1 ? `. <b>${r.groups} групи за списками учнів</b>: ${[...Array(groupsOf(c, s))].map((_, g) => `гр.${g + 1} — ${esc(byId(S.teachers, S.assign[c.id + '|' + s.id + '|' + g])?.name || 'без вчителя')}`).join('; ')}` : '') +
-        (r.shared ? `. <b class="warn">Два вчителі з тими самими учнями</b> (заміна?) — призначено останнього, перевірте` : '');
-      return `<li><b>${esc(r.cls)}</b>${r.isNew ? ' (новий)' : ''}${r.subj ? ', ' + esc(r.subj) : ''} — ${!r.students ? 'учнів не знайдено' : `у журналі ${r.students} учнів` + (r.classCount !== r.students ? `, у класі разом ${r.classCount}` : '')}${r.est ? `, уроків ~${r.est} на тиждень${r.planSet ? ' → внесено в план, перевірте' : ''}` : ''}${r.teacher ? `, вчитель: ${esc(r.teacher)}${r.group ? ` (група ${r.group})` : ''}` : ''}${tail}</li>`;
-    }).join('') + '</ul></div>' : '';
-  return `
-<section class="card">
-  <header><h2>Класи</h2></header>
-  <div class="drop" data-act="pickXlsx" role="button" tabindex="0"><b>Перетягніть сюди файли Excel з Мрії</b><span>або натисніть, щоб вибрати. Журнали → клас → предмет → Експорт (з галочкою «Планування» — тоді підтягнеться й вчитель).</span></div>
-  ${imp}
-  <div class="form">
-    <label>Клас<input id="newClass" class="w6" placeholder="5-А"></label>
-    <label>Учнів<input id="newCount" type="number" min="0" class="w4"></label>
-    <button class="btn" data-act="addClass" style="align-self:flex-end">Додати вручну</button>
-    <span class="grow"></span>
-    <label class="grow">Кілька класів одразу (через кому)<input id="bulkClasses" placeholder="5-А, 5-Б, 6-А, 6-Б"></label>
-    <button class="btn" data-act="addClasses" style="align-self:flex-end">Додати</button>
-  </div>
-</section>
-<section class="card">
-  ${list.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Клас</th><th class="num">Учнів</th><th class="num">Хлопців</th><th class="num">Дівчат</th><th class="num">Годин у плані</th><th>Поділ на групи</th><th>Джерело</th><th></th></tr></thead><tbody>` +
-    list.map(c => {
+  const drop = list.length
+    ? `<div class="drop compact" data-act="pickXlsx" role="button" tabindex="0">${ic('upload')}<div><b>Додати ще журнали з Мрії</b><span>Перетягніть файли сюди або натисніть, щоб вибрати. Повторне завантаження оновлює дані, а не дублює.</span></div></div>`
+    : `<div class="drop" data-act="pickXlsx" role="button" tabindex="0">${ic('upload')}<div><b>Перетягніть сюди файли журналів з Мрії</b><br><span>або натисніть, щоб вибрати. Можна багато файлів одразу.</span></div>
+        <ol class="howto"><li><span>Мрія → Журнали → клас → предмет</span></li><li><span>«Експорт» з усіма трьома галочками</span></li><li><span>Перетягніть файли сюди</span></li></ol></div>`;
+  const table = !list.length ? '' : `<section class="card">
+  <header><h2>Класи</h2><span class="pill">${list.length}</span><span class="sp"></span></header>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:110px">Клас</th><th class="c" style="width:100px">Учнів</th><th class="c" style="width:100px">Хлопців</th><th class="c" style="width:100px">Дівчат</th><th class="c">Годин / тиж</th><th>Поділ на групи</th><th>Джерело</th><th style="width:48px"></th></tr></thead>
+    <tbody>${list.map(c => {
       const h = S.subjects.reduce((a, s) => a + hoursOf(c, s), 0);
-      const split = S.subjects.filter(s => hoursOf(c, s) && groupsOf(c, s) > 1).map(s => s.name);
-      return `<tr><td><input class="w6" data-f="class.name" data-id="${c.id}" value="${esc(c.name)}"></td>
-        <td class="num"><input type="number" min="0" class="w4" data-f="class.students" data-id="${c.id}" value="${c.students ?? ''}"></td>
-        <td class="num"><input type="number" min="0" class="w4" data-f="class.boys" data-id="${c.id}" value="${c.boys ?? ''}"></td>
-        <td class="num"><input type="number" min="0" class="w4" data-f="class.girls" data-id="${c.id}" value="${c.girls ?? ''}"></td>
-        <td class="num">${fmtZ(h) || '<span class="muted">—</span>'}</td>
-        <td>${split.length ? esc(split.join(', ')) : '<span class="muted">—</span>'}</td>
-        <td class="muted">${esc(c.src || 'вручну')}</td>
-        <td><button class="x" data-act="delClass" data-id="${c.id}" title="Видалити клас">×</button></td></tr>`;
-    }).join('') + '</tbody></table></div>' : '<p class="muted">Класів ще нема. Перетягніть файли з Мрії або додайте вручну.</p>'}
+      const split = S.subjects.filter(s => hoursOf(c, s) && groupsOf(c, s) > 1).map(s => `${s.name} (${groupsOf(c, s)})`);
+      return `<tr><td><input data-f="class.name" data-id="${c.id}" value="${esc(c.name)}" style="font-weight:600"></td>
+        <td><input type="number" min="0" class="c" style="text-align:center" data-f="class.students" data-id="${c.id}" value="${c.students ?? ''}"></td>
+        <td><input type="number" min="0" style="text-align:center" data-f="class.boys" data-id="${c.id}" value="${c.boys ?? ''}"></td>
+        <td><input type="number" min="0" style="text-align:center" data-f="class.girls" data-id="${c.id}" value="${c.girls ?? ''}"></td>
+        <td class="c num">${h ? `<b>${fmt(h)}</b>` : '<span class="pill warn">немає годин</span>'}</td>
+        <td>${split.length ? split.map(x => `<span class="pill blue">${esc(x)}</span>`).join(' ') : '<span class="muted">—</span>'}</td>
+        <td><span class="pill">${esc(c.src || 'вручну')}</span></td>
+        <td><button class="x" data-act="delClass" data-id="${c.id}" title="Видалити клас">${ic('trash')}</button></td></tr>`;
+    }).join('')}</tbody></table></div>
+  <details class="more" style="box-shadow:none"><summary>${ic('plus')} Додати клас вручну <small>— якщо журналу з Мрії ще нема</small></summary><div class="in">
+    <div class="row"><label class="field s">Клас<input id="newClass" placeholder="5-А"></label><label class="field s">Учнів<input id="newCount" type="number" min="0"></label><button class="btn" data-act="addClass">Додати</button></div>
+    <div class="row"><label class="field">Або кілька класів через кому<input id="bulkClasses" placeholder="5-А, 5-Б, 6-А, 6-Б"></label><button class="btn" data-act="addClasses">Додати всі</button></div>
+  </div></details>
 </section>`;
+  return pageHead('Класи', 'Завантажте журнали з Мрії. З кожного файлу програма візьме клас, кількість учнів, вчителя й дати уроків, а групи визначить за списками дітей.') +
+    drop + importReport() + table +
+    (list.length ? '' : `<details class="more"><summary>${ic('plus')} Додати клас вручну <small>— якщо журналу з Мрії ще нема</small></summary><div class="in">
+      <div class="row"><label class="field s">Клас<input id="newClass" placeholder="5-А"></label><label class="field s">Учнів<input id="newCount" type="number" min="0"></label><button class="btn" data-act="addClass">Додати</button></div>
+      <div class="row"><label class="field">Або кілька класів через кому<input id="bulkClasses" placeholder="5-А, 5-Б, 6-А, 6-Б"></label><button class="btn" data-act="addClasses">Додати всі</button></div></div></details>`);
 };
 
+/* ---------- 2. Навчальний план ---------- */
 V.plan = () => {
   const C = cls();
-  if (!C.length) return empty('Спочатку додайте класи.', 'classes', 'До класів');
+  if (!C.length) return pageHead('Навчальний план', '') + emptyState('plan', 'Спершу потрібні класи', 'Завантажте журнали з Мрії або додайте класи вручну — тоді тут з’явиться таблиця годин.', 'classes', 'До класів');
+  const p0 = progress();
+  const used = S.subjects.filter(s => C.some(c => hoursOf(c, s)));
+  const showAll = planAll || !used.length, subs = showAll ? S.subjects : used;
   const cell = (c, s) => {
     const p = cellOf(c, s), g = groupsOf(c, s);
-    return `<td class="pc${p?.est ? ' est' : ''}"${p?.est ? ' title="Оцінено за датами уроків з Мрії — перевірте"' : ''}><input type="number" min="0" max="40" step="0.5" data-plan="${c.id}|${s.id}" value="${p?.h || ''}" aria-label="${esc(s.name)}, ${esc(c.name)}"><button class="grp${g > 1 ? ' on' : ''}${p?.g ? ' man' : ''}" data-act="cycleG" data-k="${c.id}|${s.id}" title="Груп: ${g} (${p?.g ? 'вручну' : 'автоматично'}). Натисніть, щоб змінити"${p?.h ? '' : ' hidden'}>${g}гр</button></td>`;
+    return `<td class="pc"><div class="cell${p?.est ? ' est' : ''}"${p?.est ? ' title="Підказка з журналу Мрії — звірте з планом школи"' : ''}><input type="number" min="0" max="40" step="0.5" placeholder=" " data-plan="${c.id}|${s.id}" value="${p?.h || ''}" aria-label="${esc(s.name)}, ${esc(c.name)}"><button class="grp${g > 1 ? ' on' : ''}${p?.g ? ' man' : ''}" data-act="cycleG" data-k="${c.id}|${s.id}" title="Груп: ${g} (${p?.g ? 'задано вручну' : 'автоматично'}). Натисніть, щоб змінити" style="visibility:${p?.h ? 'visible' : 'hidden'}">${g > 1 ? g + ' групи' : 'весь клас'}</button></div></td>`;
   };
-  return `
+  return pageHead('Навчальний план', 'Скільки годин на тиждень кожного предмета в кожному класі. Впишіть число в клітинку — зберігається одразу.',
+    p0.est ? `<button class="btn warn" data-act="confirmEst">${ic('check')} Підтвердити ${p0.est} ${plural(p0.est, 'підказку', 'підказки', 'підказок')}</button>` : '') + `
 <section class="card">
-  <header><h2>Навчальний план</h2><span class="sp"></span>
-    <div class="form">
-      <label>Скопіювати години з класу<select id="copyFrom">${C.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>
-      <button class="btn" data-act="copyPlan" style="align-self:flex-end">на всю паралель</button>
-    </div>
-  </header>
-  <p class="muted">Години на тиждень. Кнопка «1гр / 2гр» — кількість груп (синя = ділиться; з рамкою = задано вручну). Жовті клітинки підказані з Мрії — звірте з планом школи.</p>
-  <div class="tblwrap"><table class="tbl grid">
-    <thead><tr><th class="subj">Предмет</th>${C.map(c => `<th>${esc(c.name)}<small>${c.students ?? '?'} уч.</small></th>`).join('')}<th>Разом<small>вчителям</small></th></tr></thead>
-    <tbody>${S.subjects.map(s => `<tr><th class="subj">${esc(s.name)}${s.split ? `<small>${SPLIT[s.split].toLowerCase()}</small>` : ''}</th>${C.map(c => cell(c, s)).join('')}<td class="tot" data-rt="${s.id}"></td></tr>`).join('')}</tbody>
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Які предмети показати"><button data-act="planAll" data-v="0" aria-pressed="${!showAll}"${used.length ? '' : ' disabled'}>Предмети з годинами</button><button data-act="planAll" data-v="1" aria-pressed="${showAll}">Усі предмети</button></div>
+    <div class="legend"><span><i class="sw"></i>вписано</span><span><i class="sw est"></i>підказка з Мрії — перевірте</span><span><i class="sw grp">2 групи</i>клас ділиться</span></div>
+    <span class="sp"></span>
+    <div class="row" style="align-items:center"><select id="copyFrom" style="width:auto" aria-label="Клас-зразок">${C.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><button class="btn small" data-act="copyPlan" title="Скопіювати години цього класу в інші класи тієї ж паралелі">${ic('copy')} Копіювати на паралель</button></div>
+  </div>
+  ${!showAll ? '<p class="hint">Щоб вписати години для нового предмета, натисніть «Усі предмети».</p>' : ''}
+  <div class="gridwrap"><table class="grid">
+    <thead><tr><th class="subj">Предмет</th>${C.map(c => `<th>${esc(c.name)}<small>${c.students ?? '?'} уч.</small></th>`).join('')}<th>Разом<small>годин вчителям</small></th></tr></thead>
+    <tbody>${subs.map(s => `<tr><th class="subj">${esc(s.name)}${s.split ? `<small>${SPLIT[s.split].toLowerCase()}</small>` : ''}</th>${C.map(c => cell(c, s)).join('')}<td class="tot" data-rt="${s.id}"></td></tr>`).join('')}</tbody>
     <tfoot>
-      <tr><th class="subj">Годин учням</th>${C.map(c => `<td data-ct="${c.id}"></td>`).join('')}<td data-ct="all"></td></tr>
-      <tr><th class="subj">Годин вчителям (з групами)</th>${C.map(c => `<td data-cg="${c.id}"></td>`).join('')}<td data-cg="all"></td></tr>
+      <tr><th class="subj">Годин у класі</th>${C.map(c => `<td data-ct="${c.id}"></td>`).join('')}<td data-ct="all"></td></tr>
+      <tr><th class="subj">Годин вчителям <small>з урахуванням груп</small></th>${C.map(c => `<td data-cg="${c.id}"></td>`).join('')}<td data-cg="all"></td></tr>
     </tfoot>
   </table></div>
+  <p class="hint">Кнопка під числом показує поділ: «весь клас» або «2 групи». Натисніть, щоб змінити вручну (з рамкою — задано вручну). Кожна група дає вчителю повні години предмета.</p>
 </section>
-<section class="card">
-  <header><h3>Предмети</h3></header>
-  <div class="form">
-    <input id="newSubj" class="w20" placeholder="Назва предмета">
-    <select id="newSplit">${SPLIT.map((t, i) => `<option value="${i}">${t}</option>`).join('')}</select>
-    <button class="btn" data-act="addSubj">Додати предмет</button>
-  </div>
-  <div class="tblwrap"><table class="tbl"><thead><tr><th></th><th>Назва</th><th>Поділ на групи</th><th class="num">Годин учням</th><th></th></tr></thead><tbody>
-  ${S.subjects.map((s, i) => `<tr><td style="white-space:nowrap"><button class="x" data-act="subjMove" data-id="${s.id}" data-d="-1" title="Вище"${i ? '' : ' disabled'}>↑</button><button class="x" data-act="subjMove" data-id="${s.id}" data-d="1" title="Нижче"${i < S.subjects.length - 1 ? '' : ' disabled'}>↓</button></td>
-    <td><input class="w20" data-f="subj.name" data-id="${s.id}" value="${esc(s.name)}"></td>
+<details class="more"><summary>${ic('plan')} Предмети <small>— назви, порядок, які предмети діляться на групи</small></summary><div class="in">
+  <div class="row"><label class="field">Новий предмет<input id="newSubj" placeholder="Назва предмета"></label><label class="field" style="flex:0 0 240px">Поділ на групи<select id="newSplit">${SPLIT.map((t, i) => `<option value="${i}">${t}</option>`).join('')}</select></label><button class="btn" data-act="addSubj">${ic('plus')} Додати</button></div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th style="width:84px">Порядок</th><th>Назва</th><th style="width:260px">Поділ на групи</th><th class="num" style="width:120px">Годин у класах</th><th style="width:48px"></th></tr></thead><tbody>
+  ${S.subjects.map((s, i) => `<tr><td style="white-space:nowrap"><button class="x plain" data-act="subjMove" data-id="${s.id}" data-d="-1" title="Вище"${i ? '' : ' disabled'}>↑</button><button class="x plain" data-act="subjMove" data-id="${s.id}" data-d="1" title="Нижче"${i < S.subjects.length - 1 ? '' : ' disabled'}>↓</button></td>
+    <td><input data-f="subj.name" data-id="${s.id}" value="${esc(s.name)}"></td>
     <td><select data-f="subj.split" data-id="${s.id}">${SPLIT.map((t, k) => `<option value="${k}"${k === s.split ? ' selected' : ''}>${t}</option>`).join('')}</select></td>
-    <td class="num">${fmtZ(C.reduce((a, c) => a + hoursOf(c, s), 0))}</td>
-    <td><button class="x" data-act="delSubj" data-id="${s.id}" title="Видалити предмет">×</button></td></tr>`).join('')}
+    <td class="num">${fmtZ(C.reduce((a, c) => a + hoursOf(c, s), 0)) || '<span class="muted">—</span>'}</td>
+    <td><button class="x" data-act="delSubj" data-id="${s.id}" title="Видалити предмет">${ic('trash')}</button></td></tr>`).join('')}
   </tbody></table></div>
-</section>`;
+</div></details>`;
 };
 function planTotals() {
   const C = cls();
@@ -830,159 +1079,149 @@ function planTotals() {
   if (b) b.textContent = fmtZ(allG);
 }
 
+/* ---------- 3. Вчителі ---------- */
+const meter = h => { const st = status(h)[1], max = S.stavka * 1.5; return `<div class="meter" title="${fmt(h)} год із ${S.stavka} (ставка)"><i class="${st}" style="width:${Math.min(100, h / max * 100)}%"></i><em style="left:${100 / 1.5}%"></em></div>`; };
 V.teachers = () => {
-  const L = loads(), T = teachersSorted();
-  return `
-<div class="cols">
-<section class="card">
-  <header><h2>Вчителі</h2></header>
-  <label class="form" style="flex-direction:column;align-items:stretch">Вставте список ПІБ — кожен з нового рядка
-    <textarea id="newTeachers" placeholder="Іваненко Ірина Петрівна&#10;Петренко Олег Васильович"></textarea></label>
-  <div class="form"><button class="btn primary" data-act="addTeachers">Додати вчителів</button></div>
-  ${T.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>ПІБ</th><th>Посада / примітка</th><th class="num">Годин</th><th class="num">Ставок</th><th></th></tr></thead><tbody>` +
-    L.map(x => `<tr><td><input class="w20" data-f="t.name" data-id="${x.t.id}" value="${esc(x.t.name)}"></td>
-      <td><input class="w12" data-f="t.note" data-id="${x.t.id}" value="${esc(x.t.note || '')}" placeholder="вчитель"></td>
-      <td class="num">${fmt(x.total)}</td><td class="num">${fmt(x.total / S.stavka)}</td>
-      <td><button class="x" data-act="delTeacher" data-id="${x.t.id}" title="Видалити">×</button></td></tr>`).join('') + '</tbody></table></div>' : '<p class="muted">Вчителів ще нема.</p>'}
-</section>
-<section class="card">
-  <header><h3>Додаткові години</h3></header>
-  <p class="muted">Гуртки, індивідуальне навчання, консультації, курси за вибором поза планом — усе, що теж входить у навантаження.</p>
-  ${T.length ? `<div class="form">
-    <select id="exT">${tOptions('')}</select>
-    <input id="exTitle" class="grow" placeholder="Напр.: гурток «Волейбол»">
-    <input id="exH" type="number" min="0" step="0.5" class="w4" placeholder="год">
-    <button class="btn" data-act="addExtra">Додати</button></div>` : '<p class="muted">Спочатку додайте вчителів.</p>'}
-  ${S.extras.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Вчитель</th><th>Вид роботи</th><th class="num">Годин</th><th></th></tr></thead><tbody>` +
-    S.extras.map(e => `<tr><td>${esc(byId(S.teachers, e.teacherId)?.name || '?')}</td>
-      <td><input class="grow" data-f="ex.title" data-id="${e.id}" value="${esc(e.title)}"></td>
-      <td class="num"><input type="number" min="0" step="0.5" class="w4" data-f="ex.h" data-id="${e.id}" value="${e.h}"></td>
-      <td><button class="x" data-act="delExtra" data-id="${e.id}" title="Видалити">×</button></td></tr>`).join('') + '</tbody></table></div>' : ''}
-</section>
+  const L = loads();
+  const list = L.length ? `<div class="tblwrap"><table class="tbl">
+    <thead><tr><th>ПІБ і посада</th><th style="width:170px">Навантаження</th><th style="width:48px"></th></tr></thead>
+    <tbody>${L.map(x => `<tr><td><div style="display:flex;flex-direction:column;gap:6px"><input data-f="t.name" data-id="${x.t.id}" value="${esc(x.t.name)}" style="font-weight:600" aria-label="ПІБ">
+      <input data-f="t.note" data-id="${x.t.id}" value="${esc(x.t.note || '')}" placeholder="посада, напр. вчитель фізкультури" aria-label="Посада" style="min-height:30px;font-size:13px"></div></td>
+      <td><div class="loadcell"><span><b>${fmt(x.total)} год</b> <span class="muted">· ${fmt(x.total / S.stavka)} ст.</span></span>${meter(x.total)}</div></td>
+      <td><button class="x" data-act="delTeacher" data-id="${x.t.id}" title="Видалити">${ic('trash')}</button></td></tr>`).join('')}</tbody></table></div>
+    <p class="hint">Смужка — години відносно ставки: риска = ${S.stavka} год (1 ставка).</p>`
+    : `<div class="empty">${ic('teacher')}<b>Вчителів ще нема</b><p>Вони з’являться самі, коли завантажите журнали з галочкою «Планування». Або додайте вручну праворуч.</p></div>`;
+  return pageHead('Вчителі', 'Вчителі з журналів Мрії додаються й призначаються автоматично. Тут можна перевірити список, дописати посаду і додати тих, кого в журналах нема.') + `
+<div class="split">
+  <section class="card"><header><h2>Список вчителів</h2><span class="pill">${L.length}</span></header>${list}</section>
+  <div class="stack">
+    <section class="card"><header><h3>${ic('plus')} Додати вручну</h3></header>
+      <label class="field">ПІБ — кожен з нового рядка<textarea id="newTeachers" placeholder="Іваненко Ірина Петрівна&#10;Петренко Олег Васильович"></textarea></label>
+      <button class="btn primary" data-act="addTeachers">Додати вчителів</button></section>
+    <section class="card"><header><h3>Додаткові години</h3></header>
+      <p class="sub" style="margin-top:-6px">Гуртки, індивідуальне навчання, консультації — те, що теж входить у навантаження, але не в навчальний план.</p>
+      ${L.length ? `<label class="field">Вчитель<select id="exT">${tOptions('')}</select></label>
+        <div class="row"><label class="field">Вид роботи<input id="exTitle" placeholder="гурток «Волейбол»"></label><label class="field s" style="flex-basis:80px">Годин<input id="exH" type="number" min="0" step="0.5"></label></div>
+        <button class="btn" data-act="addExtra">${ic('plus')} Додати</button>` : '<p class="hint">Спершу додайте вчителів.</p>'}
+      ${S.extras.length ? `<div class="tblwrap"><table class="tbl"><tbody>${S.extras.map(e => `<tr><td><span class="cellname">${esc(e.title)}</span><span class="cellsub">${esc(shortName(byId(S.teachers, e.teacherId)?.name || '?'))}</span></td>
+        <td style="width:84px"><input type="number" min="0" step="0.5" data-f="ex.h" data-id="${e.id}" value="${e.h}" style="text-align:center"></td>
+        <td style="width:44px;padding-left:0"><button class="x" data-act="delExtra" data-id="${e.id}" title="Видалити">${ic('trash')}</button></td></tr>`).join('')}</tbody></table></div>` : ''}
+    </section>
+  </div>
 </div>`;
 };
 
+/* ---------- 4. Розподіл ---------- */
 V.dist = () => {
   const U = units();
-  if (!U.length) return empty('Спочатку внесіть години в навчальний план.', 'plan', 'До навчального плану');
-  if (!S.teachers.length) return empty('Спочатку додайте вчителів.', 'teachers', 'До вчителів');
+  if (!U.length) return pageHead('Розподіл годин', '') + emptyState('plan', 'У навчальному плані ще нема годин', 'Спершу впишіть години предметів у класах — тоді тут можна буде призначити вчителів.', 'plan', 'До навчального плану');
+  if (!S.teachers.length) return pageHead('Розподіл годин', '') + emptyState('teacher', 'Ще нема вчителів', 'Завантажте журнали з галочкою «Планування» або додайте вчителів вручну.', 'teachers', 'До вчителів');
   const hours = new Map(loads().map(x => [x.t.id, x.total]));
-  const all = U.reduce((a, u) => a + u.h, 0), done = U.filter(u => u.t).reduce((a, u) => a + u.h, 0);
+  const all = U.reduce((a, u) => a + u.h, 0), done = U.filter(u => u.t).reduce((a, u) => a + u.h, 0), freeN = U.filter(u => !u.t).length;
   const subs = S.subjects.filter(s => U.some(u => u.s === s));
   if (!subs.some(s => s.id === bulk.s)) bulk.s = subs[0].id;
   const bs = byId(S.subjects, bulk.s), bC = cls().filter(c => hoursOf(c, bs));
   const C = cls().filter(c => !dist.cls || c.id === dist.cls);
-  const blocks = C.map(c => {
+  const body = C.map(c => {
     const rows = U.filter(u => u.c === c && (!dist.only || !u.t));
     if (!rows.length) return '';
-    return `<section class="card"><header><h3>${esc(c.name)}</h3><span class="muted">${c.students ?? '?'} учнів</span></header>
-      <div class="tblwrap"><table class="tbl"><thead><tr><th>Предмет</th><th>Група</th><th class="num">Годин</th><th>Вчитель</th></tr></thead><tbody>` +
-      rows.map(u => `<tr class="${u.t ? '' : 'unassigned'}"><td>${esc(u.s.name)}</td><td>${u.g > 1 ? 'гр. ' + (u.i + 1) + ' з ' + u.g : '<span class="muted">весь клас</span>'}</td><td class="num">${fmt(u.h)}</td>
-        <td><select data-f="assign" data-k="${u.key}">${tOptions(u.t, hours)}</select></td></tr>`).join('') + '</tbody></table></div></section>';
+    const ch = U.filter(u => u.c === c).reduce((a, u) => a + u.h, 0);
+    return `<tr class="grouprow"><th colspan="4">${esc(c.name)}<span>${c.students ?? '?'} учнів · ${fmt(ch)} год вчителям</span></th></tr>` +
+      rows.map(u => `<tr class="${u.t ? '' : 'unassigned'}"><td><span class="cellname">${esc(u.s.name)}</span></td>
+        <td>${u.g > 1 ? `<span class="pill blue">група ${u.i + 1} з ${u.g}</span>` : '<span class="muted">весь клас</span>'}</td>
+        <td class="c num"><b>${fmt(u.h)}</b></td>
+        <td><select data-f="assign" data-k="${u.key}" aria-label="Вчитель: ${esc(c.name)}, ${esc(u.s.name)}">${tOptions(u.t, hours)}</select></td></tr>`).join('');
   }).join('');
-  return `
+  return pageHead('Розподіл годин', 'Кожен рядок — предмет у класі або група. Виберіть, хто його веде. Жовті рядки ще без вчителя.') + `
 <section class="card">
-  <header><h2>Розподіл годин</h2><span class="sp"></span><b>${fmt(done)} з ${fmt(all)} год</b></header>
-  <div class="bar"><i style="width:${all ? done / all * 100 : 0}%"></i></div>
+  <div class="bigprog"><div class="val">${fmt(done)} <small>з ${fmt(all)} год розподілено</small></div><div class="bar"><i style="width:${all ? done / all * 100 : 0}%"></i></div>${freeN ? `<span class="pill warn">${ic('alert')} ${fmt(all - done)} год без вчителя</span>` : `<span class="pill ok">${ic('check')} усе розподілено</span>`}</div>
 </section>
+<details class="more"${bulk.open ? ' open' : ''} data-bulk><summary>${ic('dist')} Призначити одного вчителя на кілька класів <small>— напр. фізкультура в усіх 5-х</small></summary><div class="in">
+  <div class="row">
+    <label class="field">1. Предмет<select data-f="bulk.s">${subs.map(s => `<option value="${s.id}"${s.id === bulk.s ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>
+    <label class="field">2. Вчитель<select data-f="bulk.t">${tOptions(bulk.t, hours)}</select></label>
+    <label class="field">Які групи<select data-f="bulk.grp">${[['free', 'лише ті, що без вчителя'], ['0', 'група 1 або весь клас'], ['1', 'група 2'], ['all', 'усі групи (замінити)']].map(([v, t]) => `<option value="${v}"${v === bulk.grp ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+  </div>
+  <div class="field">3. Класи<div class="chips">${bC.map(c => `<label><input type="checkbox" data-f="bulk.c" data-id="${c.id}"${bulk.cls.has(c.id) ? ' checked' : ''}>${esc(c.name)}${groupsOf(c, bs) > 1 ? ' · ' + groupsOf(c, bs) + ' гр.' : ''}</label>`).join('')}<button class="btn small ghost" data-act="bulkAll">позначити всі</button></div></div>
+  <div><button class="btn primary" data-act="bulkAssign">${ic('check')} Призначити</button></div>
+</div></details>
 <section class="card">
-  <header><h3>Швидко призначити на кілька класів</h3></header>
-  <div class="form">
-    <label>Предмет<select data-f="bulk.s">${subs.map(s => `<option value="${s.id}"${s.id === bulk.s ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>
-    <label>Вчитель<select data-f="bulk.t">${tOptions(bulk.t, hours)}</select></label>
-    <label>Групи<select data-f="bulk.grp">${[['free', 'лише без вчителя'], ['0', 'група 1 / весь клас'], ['1', 'група 2'], ['all', 'усі групи (замінити)']].map(([v, t]) => `<option value="${v}"${v === bulk.grp ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Фільтр"><button data-act="distOnly" data-v="0" aria-pressed="${!dist.only}">Усі рядки</button><button data-act="distOnly" data-v="1" aria-pressed="${dist.only}">Без вчителя${freeN ? ' · ' + freeN : ''}</button></div>
+    <span class="sp"></span>
+    <select data-f="dist.cls" style="width:auto" aria-label="Клас"><option value="">Усі класи</option>${cls().map(c => `<option value="${c.id}"${c.id === dist.cls ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
   </div>
-  <div class="chips">${bC.map(c => `<label><input type="checkbox" data-f="bulk.c" data-id="${c.id}"${bulk.cls.has(c.id) ? ' checked' : ''}>${esc(c.name)}${groupsOf(c, bs) > 1 ? ' (' + groupsOf(c, bs) + ' гр.)' : ''}</label>`).join('')}
-    <button class="btn small" data-act="bulkAll">усі</button></div>
-  <div class="form"><button class="btn primary" data-act="bulkAssign">Призначити</button></div>
-</section>
-<section class="card noprint">
-  <div class="form">
-    <label>Клас<select data-f="dist.cls"><option value="">усі класи</option>${cls().map(c => `<option value="${c.id}"${c.id === dist.cls ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
-    <label style="flex-direction:row;align-items:center;gap:6px;align-self:flex-end;color:var(--ink)"><input type="checkbox" data-f="dist.only"${dist.only ? ' checked' : ''}> лише нерозподілені</label>
-  </div>
-</section>
-<div class="cols">${blocks || '<section class="card"><p class="ok">Усе розподілено.</p></section>'}</div>`;
+  ${body ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Предмет</th><th style="width:150px">Група</th><th class="c" style="width:110px">Год / тиж</th><th style="width:40%">Вчитель</th></tr></thead><tbody>${body}</tbody></table></div>`
+    : `<div class="empty">${ic('check')}<b>Усе розподілено</b><p>Рядків без вчителя нема.</p></div>`}
+</section>`;
 };
 
+/* ---------- 5. Навантаження ---------- */
 V.load = () => {
   const L = loads(), U = units();
-  if (!S.teachers.length) return empty('Спочатку додайте вчителів.', 'teachers', 'До вчителів');
+  if (!S.teachers.length) return pageHead('Навантаження вчителів', '') + emptyState('teacher', 'Ще нема вчителів', 'Коли вчителів буде призначено на класи, тут з’явиться підсумкова таблиця.', 'teachers', 'До вчителів');
   const all = U.reduce((a, u) => a + u.h, 0), free = U.filter(u => !u.t), freeH = free.reduce((a, u) => a + u.h, 0);
-  const extraH = S.extras.reduce((a, e) => a + (+e.h || 0), 0);
-  let n = 0;
-  const body = L.map(x => {
-    const subs = bySubject(x), lines = [...subs.map(s => [esc(s.s.name), s.parts.map(p => `${esc(p.label)}&nbsp;(${fmt(p.u.h)})`).join(', '), s.h]), ...x.extra.map(e => [esc(e.title), '<span class="muted">додатково</span>', +e.h || 0])];
-    if (!lines.length) lines.push(['<span class="muted">—</span>', '', 0]);
-    const [st, cl] = status(x.total), span = lines.length;
-    n++;
-    return lines.map((l, i) => `<tr${i ? '' : ' class="teacher-first"'}>` +
-      (i ? '' : `<td rowspan="${span}" class="num">${n}</td><td rowspan="${span}"><b>${esc(x.t.name)}</b>${x.t.note ? `<br><span class="muted">${esc(x.t.note)}</span>` : ''}</td>`) +
-      `<td>${l[0]}</td><td>${l[1]}</td><td class="num">${fmtZ(l[2])}</td>` +
-      (i ? '' : `<td rowspan="${span}" class="num"><b>${fmt(x.total)}</b></td><td rowspan="${span}" class="num">${fmt(x.total / S.stavka)}</td><td rowspan="${span}"><span class="pill ${cl}">${st}</span></td>`) + '</tr>').join('');
+  const extraH = S.extras.reduce((a, e) => a + (+e.h || 0), 0), doneH = all - freeH + extraH;
+  const body = L.map((x, n) => {
+    const subs = bySubject(x);
+    const what = subs.map(s => `<div class="teach"><b>${esc(s.s.name)}</b>${s.parts.map(p => `<span class="chip">${esc(p.label)} · <b>${fmt(p.u.h)}</b></span>`).join('')}</div>`).join('') +
+      x.extra.map(e => `<div class="teach"><b>${esc(e.title)}</b><span class="chip">додатково · <b>${fmt(+e.h || 0)}</b></span></div>`).join('');
+    const [st, cl] = status(x.total);
+    return `<tr><td class="num muted">${n + 1}</td><td><span class="cellname">${esc(x.t.name)}</span>${x.t.note ? `<span class="cellsub">${esc(x.t.note)}</span>` : ''}</td>
+      <td>${what || '<span class="muted">нічого не призначено</span>'}</td>
+      <td><div class="loadcell"><span><b>${fmt(x.total)} год</b> <span class="muted">· ${fmt(x.total / S.stavka)} ст.</span></span>${meter(x.total)}</div></td>
+      <td><span class="pill ${cl}">${st}</span></td></tr>`;
   }).join('');
-  return `
+  return pageHead('Навантаження вчителів', `${S.school ? esc(S.school) + ', ' : ''}${esc(S.year)} н. р. · Ставка — ${S.stavka} год на тиждень.`,
+    `<button class="btn primary" data-act="exportXlsx">${ic('download')} Експорт в Excel</button><button class="btn" data-act="print">${ic('print')} Друк</button>`) + `
 <div class="tiles">
-  <div class="tile"><span>Годин за планом (з групами)</span><b>${fmt(all)}</b></div>
-  <div class="tile"><span>Розподілено</span><b class="${freeH ? '' : 'ok'}">${fmt(all - freeH)}</b></div>
-  <div class="tile"><span>Не розподілено</span><b class="${freeH ? 'bad' : ''}">${fmt(freeH)}</b></div>
-  <div class="tile"><span>Додаткові години</span><b>${fmt(extraH)}</b></div>
+  <div class="tile"><span>Годин за планом</span><b>${fmt(all)}</b><div class="bar"><i style="width:${all ? (all - freeH) / all * 100 : 0}%"></i></div></div>
+  <div class="tile"><span>Без вчителя</span><b class="${freeH ? 'warn' : 'ok'}">${fmt(freeH)}</b></div>
   <div class="tile"><span>Вчителів</span><b>${S.teachers.length}</b></div>
-  <div class="tile"><span>Ставок разом</span><b>${fmt((all - freeH + extraH) / S.stavka)}</b></div>
+  <div class="tile"><span>Ставок разом</span><b>${fmt(doneH / S.stavka)}</b></div>
 </div>
+${freeH ? `<div class="notice warn noprint">${ic('alert')}<span class="grow"><b>${fmt(freeH)} год ще без вчителя:</b> ${free.slice(0, 6).map(u => `${esc(u.c.name)} ${esc(u.s.name)}${u.g > 1 ? ' гр.' + (u.i + 1) : ''}`).join(', ')}${free.length > 6 ? ` і ще ${free.length - 6}` : ''}.</span><button class="btn small primary" data-go="dist">До розподілу</button></div>` : ''}
 <section class="card">
-  <header><h2>Навантаження вчителів${S.school ? ' — ' + esc(S.school) : ''}, ${esc(S.year)} н. р.</h2><span class="sp"></span>
-    <div class="form noprint"><button class="btn primary" data-act="exportXlsx">Експорт в Excel</button><button class="btn" data-act="print">Друк</button></div></header>
-  <div class="tblwrap"><table class="tbl"><thead><tr><th class="num">№</th><th>Вчитель</th><th>Предмет</th><th>Класи (годин)</th><th class="num">Годин</th><th class="num">Разом</th><th class="num">Ставок</th><th>Стан</th></tr></thead>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th style="width:44px">№</th><th style="width:230px">Вчитель</th><th>Що веде (клас · годин)</th><th style="width:190px">Навантаження</th><th style="width:130px">Стан</th></tr></thead>
   <tbody>${body}</tbody></table></div>
-  <p class="muted">Ставка = ${S.stavka} год на тиждень.</p>
-</section>
-${free.length ? `<section class="card"><header><h3 class="bad">Не розподілено: ${fmt(freeH)} год</h3><span class="sp"></span><button class="btn small noprint" data-go="dist">До розподілу</button></header>
-  <div class="tblwrap"><table class="tbl"><thead><tr><th>Клас</th><th>Предмет</th><th>Група</th><th class="num">Годин</th></tr></thead><tbody>` +
-  free.map(u => `<tr><td>${esc(u.c.name)}</td><td>${esc(u.s.name)}</td><td>${u.g > 1 ? u.i + 1 : ''}</td><td class="num">${fmt(u.h)}</td></tr>`).join('') + '</tbody></table></div></section>' : ''}`;
+</section>`;
 };
 
-V.settings = () => `
-<section class="card">
-  <header><h2>Налаштування</h2></header>
-  <div class="form">
-    <label>Назва школи<input class="w20" data-f="set.school" value="${esc(S.school)}" placeholder="Напр.: Ліцей № 1"></label>
-    <label>Навчальний рік<input class="w6" data-f="set.year" value="${esc(S.year)}"></label>
-    <label>Ставка, год/тиж<input type="number" min="1" class="w4" data-f="set.stavka" value="${S.stavka}"></label>
-    <label>Поділ на групи від, учнів<input type="number" min="1" class="w4" data-f="set.splitMin" value="${S.splitMin}"></label>
-  </div>
-</section>
-<section class="card">
-  <header><h3>Резервна копія файлом</h3></header>
-  <p>Файл .json з усіма даними. Його можна переслати (пошта, Telegram, флешка), відкрити на іншому ПК або відновити з нього дані тут.</p>
-  <div class="form">
-    <button class="btn primary" data-act="backup">Завантажити копію файлом</button>
-    <button class="btn" data-act="openJson">Відновити з файлу…</button>
-  </div>
-</section>
-<section class="card">
-  <header><h3>Автоматичні копії в папку</h3></header>
-  ${!canDir ? '<p class="muted">Доступно лише в Chrome або Edge.</p>' : DIR ? `<p>Папка «<b>${esc(DIR.name)}</b>»: ${dirOk ? '<span class="ok">копії записуються</span>' : '<span class="warn">потрібен дозвіл</span>'}. Там лежить файл «Навантаження — поточні дані.json» і підпапка «Копії по днях» (по одному файлу на кожен день роботи).</p>
-    <div class="form">${dirOk ? '' : '<button class="btn warn" data-act="reconnectDir">Дозволити запис</button>'}<button class="btn" data-act="pickDir">Вибрати іншу папку…</button><button class="btn danger" data-act="forgetDir">Не робити копії в папку</button></div>` :
-    `<p>Виберіть папку (наприклад, «Документи\\Навантаження» або флешку) — програма сама записуватиме туди поточні дані й окрему копію за кожен день.</p><div><button class="btn primary" data-act="pickDir">Вибрати папку для копій…</button></div>`}
-</section>
-<section class="card">
-  <header><h3>Точки відновлення</h3><span class="sp"></span><button class="btn small" data-act="snapNow">Створити зараз</button></header>
-  <p class="muted">Зберігаються всередині програми автоматично: при кожному відкритті, перед імпортом з Мрії, перед відновленням і очищенням. Останні ${KEEP_SNAPS}.</p>
+/* ---------- Дані і копії ---------- */
+V.settings = () => pageHead('Дані і копії', 'Усе зберігається на цьому комп’ютері автоматично. Тут — дані школи, резервні копії та відновлення.') + `
+<div class="cols2">
+  <section class="card"><header><h2>Школа</h2></header>
+    <label class="field">Назва школи<input data-f="set.school" value="${esc(S.school)}" placeholder="напр. Ілльницький ЗЗСО"></label>
+    <div class="row"><label class="field">Навчальний рік<input data-f="set.year" value="${esc(S.year)}"></label><label class="field">Ставка, год/тиж<input type="number" min="1" data-f="set.stavka" value="${S.stavka}"></label></div>
+    <label class="field">Ділити на групи від, учнів<input type="number" min="1" data-f="set.splitMin" value="${S.splitMin}"></label>
+    <p class="hint">Поріг діє, коли груп не видно з журналів. Якщо в журналах різні діти — групи визначаються за ними.</p>
+  </section>
+  <section class="card"><header><h2>Копія файлом</h2></header>
+    <p>Файл з усіма даними. Його можна переслати (пошта, Telegram, флешка), відкрити на іншому ПК або відновити з нього дані.</p>
+    <div class="row"><button class="btn primary" data-act="backup">${ic('download')} Завантажити копію</button><button class="btn" data-act="openJson">${ic('restore')} Відновити з файлу…</button></div>
+    ${lastExport ? `<p class="hint">Остання копія файлом: ${new Date(lastExport).toLocaleDateString('uk-UA')}.</p>` : ''}
+  </section>
+  <section class="card"><header><h2>Автокопії в папку</h2>${DIR && dirOk ? `<span class="pill ok">${ic('check')} працює</span>` : ''}</header>
+    ${!canDir ? '<p class="muted">Доступно лише в Chrome або Edge.</p>' : DIR ? `<p>Папка «<b>${esc(DIR.name)}</b>». Там файл «Навантаження — поточні дані.json» і підпапка «Копії по днях».</p>
+      <div class="row">${dirOk ? '' : `<button class="btn warn" data-act="reconnectDir">Дозволити запис</button>`}<button class="btn" data-act="pickDir">${ic('folder')} Інша папка…</button><button class="btn ghost" data-act="forgetDir">Вимкнути</button></div>` :
+      `<p>Виберіть папку (напр. «Документи\\Навантаження» або флешку) — програма сама записуватиме туди поточні дані й копію за кожен день.</p><div><button class="btn primary" data-act="pickDir">${ic('folder')} Вибрати папку…</button></div>`}
+  </section>
+  <section class="card"><header><h2 class="bad">Почати з нуля</h2></header>
+    <p class="muted">Видаляє всі класи, план, вчителів і розподіл. Перед цим автоматично створюється точка відновлення.</p>
+    <div><button class="btn danger" data-act="reset">${ic('trash')} Очистити всі дані</button></div>
+  </section>
+</div>
+<section class="card"><header><h2>Точки відновлення</h2><span class="sp"></span><button class="btn small" data-act="snapNow">${ic('plus')} Створити зараз</button></header>
+  <p class="sub">Створюються самі: при відкритті програми, перед завантаженням з Мрії, перед відновленням і очищенням. Зберігаються останні ${KEEP_SNAPS}.</p>
   <div id="snaps"><p class="muted">Завантаження…</p></div>
-</section>
-<section class="card">
-  <header><h3 class="bad">Почати з нуля</h3></header>
-  <p class="muted">Видаляє всі класи, план, вчителів і розподіл. Перед цим автоматично створюється точка відновлення.</p>
-  <div><button class="btn danger" data-act="reset">Очистити всі дані</button></div>
 </section>`;
 async function renderSnaps() {
   const el = $('#snaps'); if (!el) return;
   const all = await listSnaps().catch(() => []);
   const dt = t => new Date(t).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  el.innerHTML = all.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Коли</th><th>Причина</th><th>Що всередині</th><th></th></tr></thead><tbody>` +
-    all.map(s => `<tr><td class="num" style="text-align:left">${dt(s.at)}</td><td>${esc(s.reason)}</td><td class="muted">${esc(s.info)}</td>
-      <td style="white-space:nowrap"><button class="btn small" data-act="snapRestore" data-id="${s.id}">Відновити</button> <button class="btn small" data-act="snapDownload" data-id="${s.id}">Файлом</button></td></tr>`).join('') +
+  el.innerHTML = all.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:170px">Коли</th><th>Причина</th><th>Що всередині</th><th style="width:230px"></th></tr></thead><tbody>` +
+    all.map(s => `<tr><td class="num">${dt(s.at)}</td><td>${esc(s.reason)}</td><td class="muted">${esc(s.info)}</td>
+      <td style="white-space:nowrap;text-align:right"><button class="btn small" data-act="snapRestore" data-id="${s.id}">${ic('restore')} Відновити</button> <button class="btn small ghost" data-act="snapDownload" data-id="${s.id}">${ic('download')} Файлом</button></td></tr>`).join('') +
     '</tbody></table></div>' : '<p class="muted">Копій ще нема.</p>';
 }
 
@@ -990,6 +1229,13 @@ async function renderSnaps() {
 const ACT = {
   pickXlsx: () => $('#fileXlsx').click(),
   closeImport: () => { lastImport = null; render(); },
+  confirmEst: () => {
+    let n = 0;
+    for (const p of Object.values(S.plan)) if (p.est) { delete p.est; n++; }
+    save(); render(); toast(`Підтверджено: ${n}`);
+  },
+  planAll: el => { planAll = el.dataset.v === '1'; render(); },
+  distOnly: el => { dist.only = el.dataset.v === '1'; render(); },
   addClass: () => {
     const name = normClass($('#newClass').value), n = $('#newCount').value;
     if (!name) return toast('Вкажіть клас');
@@ -1017,10 +1263,10 @@ const ACT = {
     p.g = !p.g ? (autoGroups(c, s) === 1 ? 2 : 1) : p.g >= 3 ? undefined : p.g + 1;
     if (p.g === autoGroups(c, s)) delete p.g;
     const g = groupsOf(c, s);
-    el.textContent = g + 'гр';
+    el.textContent = g > 1 ? g + ' групи' : 'весь клас';
     el.classList.toggle('on', g > 1); el.classList.toggle('man', !!p.g);
-    el.title = `Груп: ${g} (${p.g ? 'вручну' : 'автоматично'}). Натисніть, щоб змінити`;
-    save(); planTotals();
+    el.title = `Груп: ${g} (${p.g ? 'задано вручну' : 'автоматично'}). Натисніть, щоб змінити`;
+    save(); planTotals(); renderNav();
   },
   copyPlan: () => {
     const from = byId(S.classes, $('#copyFrom').value), to = S.classes.filter(c => c !== from && gradeOf(c.name) === gradeOf(from.name));
@@ -1145,8 +1391,8 @@ document.addEventListener('input', e => {
   if (v > 0) { S.plan[k] = { ...S.plan[k], h: v }; delete S.plan[k].est; }
   else if (S.plan[k]) { delete S.plan[k].h; delete S.plan[k].est; if (!S.plan[k].g) delete S.plan[k]; }
   el.parentElement.classList.remove('est'); el.parentElement.removeAttribute('title');
-  const b = el.nextElementSibling; if (b) b.hidden = !(v > 0);
-  save(); planTotals();
+  const b = el.nextElementSibling; if (b) b.style.visibility = v > 0 ? 'visible' : 'hidden';
+  save(); planTotals(); renderNav();
 });
 document.addEventListener('change', e => {
   const el = e.target, f = el.dataset.f; if (!f) return;
@@ -1177,11 +1423,10 @@ document.addEventListener('change', e => {
     case 'bulk.grp': bulk.grp = v; return;
     case 'bulk.c': el.checked ? bulk.cls.add(id) : bulk.cls.delete(id); return;
     case 'dist.cls': dist.cls = v; return render();
-    case 'dist.only': dist.only = el.checked; return render();
   }
   save();
   if (redraw) { const y = scrollY; render(); scrollTo(0, y); }
-  else $('#schoolLbl').textContent = [S.school, S.year + ' н. р.'].filter(Boolean).join(' · ');
+  else renderNav();
 });
 $('#fileXlsx').addEventListener('change', e => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) importFiles(fs); });
 $('#fileJson').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) openJsonFile(f); });
@@ -1191,6 +1436,7 @@ addEventListener('drop', e => {
   e.preventDefault(); document.body.classList.remove('dragging');
   const fs = [...(e.dataTransfer?.files || [])]; if (fs.length) importFiles(fs);
 });
+document.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details[data-bulk]')) bulk.open = e.target.open; }, true);
 addEventListener('beforeprint', () => { if (TAB !== 'load') go('load'); });
 
 addEventListener('visibilitychange', () => { if (document.hidden) flush(); });

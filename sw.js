@@ -1,6 +1,6 @@
 // Кешує програму, щоб вона відкривалась без інтернету.
 // Після зміни файлів програми збільште номер версії.
-const CACHE = 'navantazhennya-v1';
+const CACHE = 'navantazhennya-v2';
 const FILES = ['./', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
