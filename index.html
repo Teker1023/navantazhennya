@@ -408,7 +408,8 @@ function guessYear() { const d = new Date(), y = d.getMonth() >= 7 ? d.getFullYe
 function blank() {
   return { v: 1, school: '', year: guessYear(), stavka: 18, splitMin: 27, classes: [],
     subjects: SUBJECTS.map(([name, split]) => ({ id: uid(), name, split })),
-    teachers: [], plan: {}, assign: {}, extras: [], homeroom: {}, pays: [], adminMax: 9, updated: 0 };
+    teachers: [], plan: {}, assign: {}, extras: [], homeroom: {}, pays: [], adminMax: 9,
+    norms: { ...NORM, kinds: { ...NORM.kinds } }, updated: 0 };
 }
 function valid(d) {
   if (!d || d.v !== 1 || !Array.isArray(d.classes) || !Array.isArray(d.subjects) || !Array.isArray(d.teachers)) return false;
@@ -416,8 +417,20 @@ function valid(d) {
   if (!d.homeroom) d.homeroom = {};
   if (!Array.isArray(d.pays)) d.pays = [];
   if (!d.adminMax) d.adminMax = 9;
+  d.norms = { ...NORM, ...(d.norms || {}), kinds: { ...NORM.kinds, ...(d.norms?.kinds || {}) } };
   return true;
 }
+
+/* Норми доплат за Інструкцією № 102. Школа може змінити їх у «Дані і копії»,
+   і тоді всі розрахунки та довідка показують уже змінені значення. */
+const NORM = {
+  hrJunior: 20, hrSenior: 25, smallClass: 12,
+  papers14: 15, papersLang: 20, papersMath: 15, papersForeign: 10,
+  kinds: { cabinet: 10, workshop: 15, plot: 10, library: 5, method: 10, inclusive: 20, pc: 10, site: 10, other: 0 }
+};
+const norm = k => S.norms?.[k] ?? NORM[k];
+const normKind = k => S.norms?.kinds?.[k] ?? NORM.kinds[k] ?? 0;
+const normChanged = () => JSON.stringify({ ...NORM, ...(S.norms || {}), kinds: { ...NORM.kinds, ...(S.norms?.kinds || {}) } }) !== JSON.stringify(NORM);
 
 /* Посади адміністрації: для них педнавантаження обмежене (ліміт у налаштуваннях) */
 const ADMIN_POSTS = ['Директор', 'Заступник директора з навчально-виховної роботи', 'Заступник директора з виховної роботи',
@@ -475,17 +488,17 @@ const PAY_KINDS = [
 const payKind = k => PAY_KINDS.find(x => x.k === k) || PAY_KINDS[PAY_KINDS.length - 1];
 /* перевірка письмових робіт: 1–4 кл. усі предмети 15 %, 5–11 кл. мова й література 20 %, математика 15 %, іноземна та креслення 10 % */
 function papersPct(subjName, grade) {
-  if (grade && grade <= 4) return 15;
+  if (grade && grade <= 4) return norm('papers14');
   const n = normSubj(subjName);
-  if (/мова|літератур/.test(n) && !/іноземн|англ|німец|франц|іспан|польськ/.test(n)) return 20;
-  if (/математик|алгебр|геометр/.test(n)) return 15;
-  if (/іноземн|англ|німец|франц|іспан|польськ|креслен/.test(n)) return 10;
+  if (/мова|літератур/.test(n) && !/іноземн|англ|німец|франц|іспан|польськ/.test(n)) return norm('papersLang');
+  if (/математик|алгебр|геометр/.test(n)) return norm('papersMath');
+  if (/іноземн|англ|німец|франц|іспан|польськ|креслен/.test(n)) return norm('papersForeign');
   return 0;
 }
 /* класне керівництво: 1–4 кл. 20 %, 5–11 кл. 25 %; у класі до 12 учнів — половина */
 function homeroomPct(c) {
-  const base = gradeOf(c.name) <= 4 ? 20 : 25;
-  return c.students && c.students < 12 ? base / 2 : base;
+  const base = gradeOf(c.name) <= 4 ? norm('hrJunior') : norm('hrSenior');
+  return c.students && c.students < norm('smallClass') ? base / 2 : base;
 }
 const paysOf = t => S.pays.filter(p => p.teacherId === t.id);
 /* Перевірка письмових робіт оплачується пропорційно до годин з цих предметів:
@@ -1166,12 +1179,28 @@ V.help = () => {
   </div>
 </section>
 <section class="card">
+  <header><h2>Скільки нараховується доплат</h2>${normChanged() ? '<span class="pill warn">змінено вручну</span>' : '<span class="pill">за Інструкцією № 102</span>'}<span class="sp"></span><button class="btn small" data-go="settings">${ic('data')} Змінити</button></header>
+  <p class="sub">Відсотки — від ставки заробітної плати. Значення нижче — ті, що зараз використовує програма; змінити їх можна в «Дані і копії».</p>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>За що</th><th style="width:120px">Розмір</th><th style="width:240px">Норма за Інструкцією</th></tr></thead><tbody>
+    ${[['Класне керівництво, 1–4 класи', norm('hrJunior'), NORM.hrJunior],
+       ['Класне керівництво, 5–11 класи', norm('hrSenior'), NORM.hrSenior],
+       [`У класі, де менше ${norm('smallClass')} учнів`, 'половина розміру', 'половина'],
+       ['Перевірка робіт, 1–4 класи (усі предмети)', norm('papers14'), NORM.papers14],
+       ['Перевірка робіт: мова й література', norm('papersLang'), NORM.papersLang],
+       ['Перевірка робіт: математика, алгебра, геометрія', norm('papersMath'), NORM.papersMath],
+       ['Перевірка робіт: іноземна мова, креслення', norm('papersForeign'), NORM.papersForeign],
+       ...PAY_KINDS.filter(k => k.k !== 'papers' && k.k !== 'other').map(k => [k.t, normKind(k.k), k.min === k.max ? k.min : `${k.min}–${k.max}`])
+      ].map(([t, v, n]) => `<tr><td>${esc(t)}</td><td class="num"><b>${typeof v === 'number' ? fmt(v) + ' %' : esc(v)}</b></td><td class="muted">${typeof n === 'number' ? n + ' %' : esc(n) + (n === 'половина' ? '' : ' %')}${typeof v === 'number' && typeof n === 'number' && v !== n ? ' <span class="pill warn">змінено</span>' : ''}</td></tr>`).join('')}
+  </tbody></table></div>
+  <p class="hint">Перевірка робіт рахується пропорційно до годин: <code>норма × години ÷ ${S.stavka}</code>. Класне керівництво й завідування — фіксований відсоток. Конкретний розмір у межах норми встановлює директор за погодженням з профспілковим комітетом.</p>
+</section>
+<section class="card">
   <header><h2>Як програма рахує</h2></header>
   <div class="facts">
     <div class="fact"><b>${S.stavka} год = 1 ставка</b><span>Навантаження вчителя — сума годин на тиждень у всіх його класах і групах.</span></div>
     <div class="fact"><b>Групи — за учнями</b><span>Два журнали одного предмета в класі з різними дітьми — це дві групи, кожна зі своїм вчителем.</span></div>
     <div class="fact"><b>Години — підказка</b><span>Рахуються за датами уроків у журналі. Звірте їх з навчальним планом школи.</span></div>
-    <div class="fact"><b>Доплати за нормою</b><span>Класне керівництво 20 % (1–4 кл.) і 25 % (5–11 кл.), перевірка робіт, завідування кабінетом — за Інструкцією № 102.</span></div>
+    <div class="fact"><b>Доплати за нормою</b><span>Класне керівництво ${fmt(norm('hrJunior'))} % (1–4 кл.) і ${fmt(norm('hrSenior'))} % (5–11 кл.), перевірка робіт, завідування кабінетом — за Інструкцією № 102.</span></div>
     <div class="fact"><b>Прізвища не зберігаються</b><span>Лише кількість учнів і незворотні коди для порівняння списків. Дані не виходять за межі ПК.</span></div>
   </div>
 </section>`;
@@ -1432,7 +1461,7 @@ function payBlocks() {
   return `
 <section class="card">
   <header><h2>Класне керівництво</h2><span class="pill">${C.filter(c => S.homeroom[c.id]).length} з ${C.length}</span><span class="sp"></span>${searchBox('hr', 'Пошук: клас або керівник')}</header>
-  <p class="sub">Розмір за Інструкцією № 102: 1–4 класи — 20 %, 5–11 класи — 25 % ставки. У класі, де менше 12 учнів, — половина. Число можна змінити.</p>
+  <p class="sub">Розмір: 1–4 класи — ${fmt(norm('hrJunior'))} %, 5–11 класи — ${fmt(norm('hrSenior'))} % ставки. У класі, де менше ${norm('smallClass')} учнів, — половина. Число в рядку можна змінити, а самі норми — у «Дані і копії».</p>
   ${!C.length ? '<p class="hint">Класів ще нема.</p>' : !Chr.length ? `<div class="empty">${ic('classes')}<b>Нічого не знайдено</b><p>За запитом «${esc(Q.hr)}» класів нема.</p></div>`
     : `<div class="tblwrap"><table class="tbl"><thead><tr><th>Клас</th><th>Класний керівник</th><th>Розмір</th></tr></thead><tbody>${rows}</tbody></table></div>`}
 </section>
@@ -1441,15 +1470,15 @@ function payBlocks() {
   <p class="sub">Перевірка письмових робіт, завідування кабінетом чи майстернею, методоб’єднання тощо. Відсотки — від ставки, у межах, які встановлює директор за погодженням з профкомом. Перевірка робіт рахується пропорційно до годин: норма × години ÷ ${S.stavka}.</p>
   <div class="row">
     <label class="field">Вчитель<select id="payT">${tOpt('')}</select></label>
-    <label class="field">Вид<select id="payKind">${PAY_KINDS.map(k => `<option value="${k.k}">${esc(k.t)} · ${k.min === k.max ? k.min : k.min + '–' + k.max} %</option>`).join('')}</select></label>
+    <label class="field">Вид<select id="payKind">${PAY_KINDS.map(k => `<option value="${k.k}">${esc(k.t)} · ${fmt(normKind(k.k))} %${k.min === k.max ? '' : ` (норма ${k.min}–${k.max} %)`}</option>`).join('')}</select></label>
     <label class="field s" style="flex-basis:96px">Розмір, %<input id="payPct" type="number" min="0" max="100" step="0.5"></label>
     <button class="btn" data-act="addPay">${ic('plus')} Додати</button>
   </div>
   ${list}
   <div><button class="btn small ghost" data-act="suggestPays" title="Додасть доплату тим, у кого її ще нема, і оновить години в наявних">${ic('plus')} Порахувати перевірку робіт за розподілом</button></div>
-  ${how('За що платять за перевірку письмових робіт (Інструкція № 102)',
-    '<b>1–4 класи</b> — 15 % за всі предмети.',
-    '<b>Мова й література</b> — 20 %. <b>Математика, алгебра, геометрія</b> — 15 %. <b>Іноземна мова, креслення</b> — 10 %.',
+  ${how('За що платять за перевірку письмових робіт',
+    `<b>1–4 класи</b> — ${fmt(norm('papers14'))} % за всі предмети.`,
+    `<b>Мова й література</b> — ${fmt(norm('papersLang'))} %. <b>Математика, алгебра, геометрія</b> — ${fmt(norm('papersMath'))} %. <b>Іноземна мова, креслення</b> — ${fmt(norm('papersForeign'))} %.`,
     'За інші предмети (фізкультура, музика, інформатика, історія тощо) доплата за перевірку робіт <b>не передбачена</b>.',
     `Сума рахується пропорційно до годин: <code>норма × години ÷ ${S.stavka}</code>. Наприклад: <code>20 % × 25 год ÷ ${S.stavka} = 27,78 %</code>.`)}
 </section>`;
@@ -1591,6 +1620,26 @@ V.settings = () => pageHead('Дані і копії', 'Усе зберігаєт
     <div><button class="btn danger" data-act="reset">${ic('trash')} Очистити всі дані</button></div>
   </section>
 </div>
+<section class="card"><header><h2>Норми доплат</h2>${normChanged() ? `<span class="pill warn">змінено</span><span class="sp"></span><button class="btn small" data-act="resetNorms">${ic('restore')} Повернути за Інструкцією</button>` : '<span class="pill ok">за Інструкцією № 102</span>'}</header>
+  <p class="sub">Відсотки від ставки. Змінюйте, якщо у вашому наказі інші розміри — програма одразу перерахує доплати й покаже нові числа в «Як це працює».</p>
+  <div class="row">
+    <label class="field">Класне керівництво, 1–4 кл., %<input type="number" min="0" max="100" step="0.5" data-f="norm.hrJunior" value="${fmt(norm('hrJunior'))}"></label>
+    <label class="field">Класне керівництво, 5–11 кл., %<input type="number" min="0" max="100" step="0.5" data-f="norm.hrSenior" value="${fmt(norm('hrSenior'))}"></label>
+    <label class="field">Половина розміру, якщо учнів менше<input type="number" min="0" max="40" data-f="norm.smallClass" value="${norm('smallClass')}"></label>
+  </div>
+  <div class="row">
+    <label class="field">Зошити: 1–4 класи, %<input type="number" min="0" max="100" step="0.5" data-f="norm.papers14" value="${fmt(norm('papers14'))}"></label>
+    <label class="field">Зошити: мова й література, %<input type="number" min="0" max="100" step="0.5" data-f="norm.papersLang" value="${fmt(norm('papersLang'))}"></label>
+    <label class="field">Зошити: математика, %<input type="number" min="0" max="100" step="0.5" data-f="norm.papersMath" value="${fmt(norm('papersMath'))}"></label>
+    <label class="field">Зошити: іноземна, креслення, %<input type="number" min="0" max="100" step="0.5" data-f="norm.papersForeign" value="${fmt(norm('papersForeign'))}"></label>
+  </div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>Інші доплати</th><th style="width:130px">Розмір, %</th><th style="width:150px">Норма</th></tr></thead><tbody>
+  ${PAY_KINDS.filter(k => k.k !== 'papers' && k.k !== 'other').map(k => `<tr><td>${esc(k.t)}</td>
+    <td><div class="pcin"><input type="number" min="0" max="100" step="0.5" data-f="norm.kind" data-id="${k.k}" value="${fmt(normKind(k.k))}"><span>%</span></div></td>
+    <td class="muted">${k.min === k.max ? k.min : k.min + '–' + k.max} %</td></tr>`).join('')}
+  </tbody></table></div>
+  <p class="hint">Зміна норм не переписує вже створені доплати — вона діє на нові. Щоб перерахувати перевірку робіт за новими відсотками, натисніть «Порахувати перевірку робіт» на кроці «Вчителі».</p>
+</section>
 <section class="card"><header><h2>Перевірка програми</h2><span class="sp"></span><button class="btn small" data-act="copyDiag">${ic('copy')} Скопіювати для підтримки</button></header>
   <p class="sub">Якщо на цьому комп’ютері щось не працює, подивіться, що тут позначено червоним.</p>
   <div id="diag"><p class="muted">Перевірка…</p></div>
@@ -1787,7 +1836,7 @@ const ACT = {
   delExtra: el => { S.extras = S.extras.filter(e => e.id !== el.dataset.id); save(); render(); },
   addPay: () => {
     const teacherId = $('#payT').value, kind = $('#payKind').value, k = payKind(kind);
-    const pct = parseFloat(($('#payPct').value || '').replace(',', '.')) || k.min;
+    const pct = parseFloat(($('#payPct').value || '').replace(',', '.')) || normKind(kind);
     if (!teacherId) return toast('Виберіть вчителя');
     S.pays.push({ id: uid(), teacherId, kind, note: '', pct });
     save(); render();
@@ -1854,6 +1903,7 @@ const ACT = {
     catch (e) { toast('Папка недоступна — виберіть її знову'); }
   },
   forgetDir: async () => { DIR = null; dirOk = false; await kvDel('dir'); render(); },
+  resetNorms: () => { S.norms = { ...NORM, kinds: { ...NORM.kinds } }; save(true); render(); toast('Норми повернуто за Інструкцією № 102'); },
   copyDiag: async () => {
     const t = `Навантаження, перевірка ПК
 ${$('#diag')?.dataset.text || ''}
@@ -1961,7 +2011,11 @@ document.addEventListener('change', e => {
     case 'set.year': S.year = v.trim() || guessYear(); break;
     case 'set.stavka': S.stavka = +v > 0 ? +v : 18; break;
     case 'set.splitMin': S.splitMin = +v > 0 ? +v : 27; break;
+    case 'norm.hrJunior': case 'norm.hrSenior': case 'norm.smallClass':
+    case 'norm.papers14': case 'norm.papersLang': case 'norm.papersMath': case 'norm.papersForeign':
+      S.norms[f.slice(5)] = num ?? NORM[f.slice(5)]; redraw = true; break;
     case 'set.adminMax': S.adminMax = num ?? 9; redraw = true; break;
+    case 'norm.kind': S.norms.kinds[id] = num ?? 0; redraw = true; break;
     case 'assign': if (v) S.assign[el.dataset.k] = v; else delete S.assign[el.dataset.k]; redraw = true; break;
     case 'bulk.s': bulk.s = v; bulk.cls.clear(); return render();
     case 'bulk.t': bulk.t = v; return;
