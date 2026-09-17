@@ -183,6 +183,7 @@ table.tbl{border-collapse:separate;border-spacing:0;width:100%;background:var(--
 .legend span{display:inline-flex;align-items:center;gap:7px}
 .sw{width:24px;height:18px;border-radius:5px;border:1.5px solid var(--line2);background:var(--surface)}
 .sw.est{border:1.5px dashed var(--warn);background:var(--warn-soft)}
+.sw.est1{border:1.5px dashed var(--muted);background:var(--raise)}
 .sw.grp{width:auto;height:auto;border-radius:99px;font-size:11px;font-weight:600;padding:1px 7px;background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--accent)}
 .gridwrap{overflow:auto;max-height:calc(100vh - 260px);border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 table.grid{border-collapse:separate;border-spacing:0;background:var(--surface);min-width:100%}
@@ -199,7 +200,16 @@ table.grid{border-collapse:separate;border-spacing:0;background:var(--surface);m
 .cell input:hover{border-color:var(--line2)}
 .cell input:focus{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px var(--accent-soft)}
 .cell input:not(:placeholder-shown){background:var(--surface);border-color:var(--line2)}
-.cell.est input,.cell.est input:not(:placeholder-shown){border:1.5px dashed var(--warn);background:var(--warn-soft)}
+.cell.est2 input,.cell.est2 input:not(:placeholder-shown){border:1.5px dashed var(--warn);background:var(--warn-soft)}
+.cell.est1 input,.cell.est1 input:not(:placeholder-shown){border:1.5px dashed var(--muted);background:var(--raise)}
+.cell.est2 input::placeholder{color:var(--warn);font-size:12.5px;font-weight:600}
+.okbtn{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line2);background:var(--surface);border-radius:99px;font-size:11.5px;font-weight:600;line-height:1;padding:3px 9px 3px 6px;color:var(--ink2)}
+.okbtn svg.i{width:12px;height:12px;stroke-width:2.6;color:var(--ok)}
+.okbtn:hover{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.pdiff{font-size:11.5px;font-weight:600;color:var(--warn);white-space:nowrap}
+.pdone{height:20px;display:grid;place-items:center;color:var(--ok)}
+.pdone svg.i{width:14px;height:14px;stroke-width:2.6}
+.howcheck .howto{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
 .grp{border:1px solid var(--line);background:var(--surface);border-radius:99px;font-size:11.5px;line-height:1;padding:3px 8px;color:var(--muted);font-weight:600}
 .grp:hover{border-color:var(--muted)}
 .grp.on{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
@@ -589,22 +599,37 @@ async function readMriya(z, fname) {
   }
   return { file: fname, cls, subj, group, students, teacher, dates: [...dates] };
 }
-function estHours(dates) {
-  const y0 = parseInt(S.year, 10) || new Date().getFullYear(), wk = new Map();
-  /* уроки, заплановані на майбутні тижні, часто ще не повні — рахуємо лише до поточного тижня */
+/* Години на тиждень за датами уроків. stable = усі повні тижні дали однакову кількість
+   (перший і поточний тиждень можуть бути неповними — їх не рахуємо, якщо там менше уроків). */
+function estInfo(dates) {
+  const y0 = parseInt(S.year, 10) || new Date().getFullYear();
   const now = new Date(); now.setHours(0, 0, 0, 0); now.setDate(now.getDate() - (now.getDay() + 6) % 7);
   const weeks = dates.map(x => {
     const [dd, mm] = x.split('/').map(Number), dt = new Date(mm >= 8 ? y0 : y0 + 1, mm - 1, dd);
     dt.setDate(dt.getDate() - (dt.getDay() + 6) % 7);
     return dt;
   });
-  const past = weeks.filter(dt => dt <= now);
-  for (const dt of past.length ? past : weeks) { const k = dt.toDateString(); wk.set(k, (wk.get(k) || 0) + 1); }
+  const past = weeks.filter(dt => dt <= now), wk = new Map();
+  for (const dt of past.length ? past : weeks) wk.set(+dt, (wk.get(+dt) || 0) + 1);
   if (!wk.size) return null;
   const freq = {};
   for (const c of wk.values()) freq[c] = (freq[c] || 0) + 1;
-  return +Object.entries(freq).sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0];
+  const h = +Object.entries(freq).sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0];
+  const list = [...wk.entries()].sort((a, b) => a[0] - b[0]).map(x => x[1]);
+  if (list.length > 1 && list[0] < h) list.shift();
+  if (list.length > 1 && list[list.length - 1] < h && wk.has(+now)) list.pop();
+  return { h, stable: list.length >= 2 && list.every(x => x === h) };
 }
+const estHours = dates => estInfo(dates)?.h ?? null;
+
+/* Рівень сумніву щодо годин у клітинці: 0 — перевірено людиною, 1 — з журналу, упевнено, 2 — перевірте */
+function estLevel(c, s) {
+  const p = cellOf(c, s);
+  if (!p?.est || !p.h) return 0;
+  const mismatch = S.classes.some(x => x !== c && gradeOf(x.name) === gradeOf(c.name) && hoursOf(x, s) && hoursOf(x, s) !== p.h);
+  return (p.est === 1 || p.est === true) && !mismatch ? 1 : 2;
+}
+
 /* Коди учнів замість прізвищ: сіль + ПІБ → незворотний хеш + стать (m/f/?).
    Потрібні, щоб порівнювати списки різних журналів (групи, вибулі учні), не зберігаючи імен. */
 function cyrb53(str, seed = 0) {
@@ -673,9 +698,10 @@ function applyImport(info, res) {
   if (info.subj) {
     s = findSubject(info.subj);
     if (!s) { s = { id: uid(), name: info.subj, split: guessSplit(info.subj) }; S.subjects.push(s); }
-    est = estHours(info.dates);
+    const ei = estInfo(info.dates);
+    est = ei?.h ?? null;
     const k = c.id + '|' + s.id;
-    if (est && !S.plan[k]?.h) { S.plan[k] = { ...S.plan[k], h: est, est: true }; planSet = true; }
+    if (est && !S.plan[k]?.h) { S.plan[k] = { ...S.plan[k], h: est, est: ei.stable ? 1 : 2 }; planSet = true; }
   }
   if (info.teacher) {
     /* «Рябець Олександр» і «Рябець Олександр Андрійович» — одна людина */
@@ -872,15 +898,20 @@ let planAll = false;
 function progress() {
   const U = units(), all = U.reduce((a, u) => a + u.h, 0), freeH = U.filter(u => !u.t).reduce((a, u) => a + u.h, 0);
   const cIds = new Set(S.classes.map(c => c.id)), sIds = new Set(S.subjects.map(s => s.id));
-  const est = Object.entries(S.plan).filter(([k, p]) => p.est && p.h && cIds.has(k.split('|')[0]) && sIds.has(k.split('|')[1])).length;
+  let est = 0, warn = 0;
+  for (const [k, p] of Object.entries(S.plan)) {
+    const [ci, si] = k.split('|');
+    if (!p.est || !p.h || !cIds.has(ci) || !sIds.has(si)) continue;
+    est++; if (estLevel(byId(S.classes, ci), byId(S.subjects, si)) === 2) warn++;
+  }
   const P = S.subjects.filter(s => S.classes.some(c => hoursOf(c, s))).length;
-  return { C: S.classes.length, T: S.teachers.length, P, est, all, freeH, U };
+  return { C: S.classes.length, T: S.teachers.length, P, est, warn, all, freeH, U };
 }
 const STEPS = [
   { k: 'classes', t: 'Класи', d: 'Перетягніть файли журналів з Мрії — програма візьме класи, учнів, вчителів і дати уроків.',
     s: p => p.C ? [`${p.C} ${plural(p.C, 'клас', 'класи', 'класів')}`, 'ok'] : ['завантажте журнали', 'todo'] },
   { k: 'plan', t: 'Навчальний план', d: 'Перевірте години на тиждень для кожного предмета й класу. Жовті — підказки, їх треба звірити.',
-    s: p => !p.P ? ['впишіть години', 'todo'] : p.est ? [`${p.est} ${plural(p.est, 'підказка', 'підказки', 'підказок')} перевірити`, 'warn'] : [`${p.P} ${plural(p.P, 'предмет', 'предмети', 'предметів')}`, 'ok'] },
+    s: p => !p.P ? ['впишіть години', 'todo'] : p.warn ? [`${p.warn} перевірити`, 'warn'] : p.est ? [`${p.est} з журналів, не звірено`, 'todo'] : [`${p.P} ${plural(p.P, 'предмет', 'предмети', 'предметів')} звірено`, 'ok'] },
   { k: 'teachers', t: 'Вчителі', d: 'Вчителі з журналів додаються самі. Додайте тих, кого нема, і гуртки чи індивідуальне навчання.',
     s: p => p.T ? [`${p.T} ${plural(p.T, 'вчитель', 'вчителі', 'вчителів')}`, 'ok'] : ['додайте вчителів', 'todo'] },
   { k: 'dist', t: 'Розподіл', d: 'Кожній годині — свій вчитель. Жовті рядки ще без вчителя.',
@@ -889,6 +920,12 @@ const STEPS = [
     s: p => p.all && !p.freeH ? ['готово', 'ok'] : ['підсумок', 'todo'] }
 ];
 
+/* перемалювати, не втративши прокрутку сторінки й таблиці */
+function keepScroll(fn) {
+  const y = scrollY, w = $('.gridwrap'), wx = w?.scrollLeft, wy = w?.scrollTop;
+  fn(); scrollTo(0, y);
+  const w2 = $('.gridwrap'); if (w2) { w2.scrollLeft = wx || 0; w2.scrollTop = wy || 0; }
+}
 function go(tab) { TAB = tab; try { localStorage.setItem(LS + ':tab', tab); } catch (e) {} render(); scrollTo(0, 0); }
 function renderNav() {
   const p = progress();
@@ -1019,35 +1056,69 @@ V.classes = () => {
 };
 
 /* ---------- 2. Навчальний план ---------- */
+let planMode = 'grade', planWarnOnly = false;
 V.plan = () => {
   const C = cls();
   if (!C.length) return pageHead('Навчальний план', '') + emptyState('plan', 'Спершу потрібні класи', 'Завантажте журнали з Мрії або додайте класи вручну — тоді тут з’явиться таблиця годин.', 'classes', 'До класів');
   const p0 = progress();
+  const grades = [...new Set(C.map(c => gradeOf(c.name)))].sort((a, b) => a - b);
+  const inGrade = g => C.filter(c => gradeOf(c.name) === g);
   const used = S.subjects.filter(s => C.some(c => hoursOf(c, s)));
-  const showAll = planAll || !used.length, subs = showAll ? S.subjects : used;
+  const rowWarn = s => C.some(c => estLevel(c, s) === 2);
+  let subs = planAll || !used.length ? S.subjects : used;
+  if (planWarnOnly) subs = subs.filter(rowWarn);
+  const lvlCls = l => l === 2 ? ' est2' : l === 1 ? ' est1' : '';
+
+  /* клітинка «клас × предмет» */
   const cell = (c, s) => {
-    const p = cellOf(c, s), g = groupsOf(c, s);
-    return `<td class="pc"><div class="cell${p?.est ? ' est' : ''}"${p?.est ? ' title="Підказка з журналу Мрії — звірте з планом школи"' : ''}><input type="number" min="0" max="40" step="0.5" placeholder=" " data-plan="${c.id}|${s.id}" value="${p?.h || ''}" aria-label="${esc(s.name)}, ${esc(c.name)}"><button class="grp${g > 1 ? ' on' : ''}${p?.g ? ' man' : ''}" data-act="cycleG" data-k="${c.id}|${s.id}" title="Груп: ${g} (${p?.g ? 'задано вручну' : 'автоматично'}). Натисніть, щоб змінити" style="visibility:${p?.h ? 'visible' : 'hidden'}">${g > 1 ? g + ' групи' : 'весь клас'}</button></div></td>`;
+    const p = cellOf(c, s), g = groupsOf(c, s), l = estLevel(c, s);
+    const why = l === 2 ? (p.est === 2 ? 'У журналі тижні мають різну кількість уроків — перевірте' : 'Інші класи паралелі мають іншу кількість годин — перевірте') : l === 1 ? 'Взято з журналу: кожен тиждень однаково' : '';
+    return `<td class="pc"><div class="cell${lvlCls(l)}"${why ? ` title="${why}"` : ''}><input type="number" min="0" max="40" step="0.5" placeholder=" " data-plan="${c.id}|${s.id}" value="${p?.h || ''}" aria-label="${esc(s.name)}, ${esc(c.name)}"><button class="grp${g > 1 ? ' on' : ''}${p?.g ? ' man' : ''}" data-act="cycleG" data-k="${c.id}|${s.id}" title="Груп: ${g} (${p?.g ? 'задано вручну' : 'автоматично'}). Натисніть, щоб змінити" style="visibility:${p?.h ? 'visible' : 'hidden'}">${g > 1 ? g + ' групи' : 'весь клас'}</button></div></td>`;
   };
-  return pageHead('Навчальний план', 'Скільки годин на тиждень кожного предмета в кожному класі. Впишіть число в клітинку — зберігається одразу.',
-    p0.est ? `<button class="btn warn" data-act="confirmEst">${ic('check')} Підтвердити ${p0.est} ${plural(p0.est, 'підказку', 'підказки', 'підказок')}</button>` : '') + `
+  /* клітинка «паралель × предмет» */
+  const pcell = (g, s) => {
+    const G = inGrade(g), vals = G.map(c => hoursOf(c, s)), set = [...new Set(vals.filter(Boolean))];
+    const differ = set.length > 1 || (set.length === 1 && vals.some(v => !v));
+    const lvl = Math.max(0, ...G.map(c => estLevel(c, s))), anyEst = G.some(c => cellOf(c, s)?.est && hoursOf(c, s));
+    const detail = differ ? G.map(c => `${esc(c.name.split('-')[1] || c.name)}${hoursOf(c, s) ? fmt(hoursOf(c, s)) : '—'}`).join(' · ') : '';
+    const cl = differ ? ' est2' : lvlCls(lvl);
+    return `<td class="pc"><div class="cell${cl}"${differ ? ' title="Класи паралелі мають різну кількість годин. Впишіть правильне число — воно стане однаковим для всіх класів паралелі."' : ''}>
+      <input type="number" min="0" max="40" step="0.5" placeholder="${differ ? 'різне' : ' '}" data-par="${g}|${s.id}" value="${!differ && set[0] ? set[0] : ''}" aria-label="${esc(s.name)}, ${g} клас">
+      ${differ ? `<span class="pdiff">${detail}</span>` : anyEst ? `<button class="okbtn" data-act="parOk" data-k="${g}|${s.id}" title="Число правильне — підтвердити для всіх класів паралелі">${ic('check')} так</button>` : set[0] ? `<span class="pdone">${ic('check')}</span>` : '<span class="pdone"></span>'}
+    </div></td>`;
+  };
+
+  const grid = planMode === 'grade'
+    ? `<table class="grid"><thead><tr><th class="subj">Предмет</th>${grades.map(g => `<th>${g} клас<small>${inGrade(g).map(c => esc(c.name.split('-')[1] || '')).join(', ')}</small></th>`).join('')}</tr></thead>
+       <tbody>${subs.map(s => `<tr><th class="subj">${esc(s.name)}${s.split ? `<small>${SPLIT[s.split].toLowerCase()}</small>` : ''}</th>${grades.map(g => pcell(g, s)).join('')}</tr>`).join('')}</tbody></table>`
+    : `<table class="grid"><thead><tr><th class="subj">Предмет</th>${C.map(c => `<th>${esc(c.name)}<small>${c.students ?? '?'} уч.</small></th>`).join('')}<th>Разом<small>годин вчителям</small></th></tr></thead>
+       <tbody>${subs.map(s => `<tr><th class="subj">${esc(s.name)}${s.split ? `<small>${SPLIT[s.split].toLowerCase()}</small>` : ''}</th>${C.map(c => cell(c, s)).join('')}<td class="tot" data-rt="${s.id}"></td></tr>`).join('')}</tbody>
+       <tfoot>
+         <tr><th class="subj">Годин у класі</th>${C.map(c => `<td data-ct="${c.id}"></td>`).join('')}<td data-ct="all"></td></tr>
+         <tr><th class="subj">Годин вчителям <small>з урахуванням груп</small></th>${C.map(c => `<td data-cg="${c.id}"></td>`).join('')}<td data-cg="all"></td></tr>
+       </tfoot></table>`;
+
+  return pageHead('Навчальний план', 'Скільки годин на тиждень кожного предмета. Години з журналів уже підставлені — звірте їх з навчальним планом школи.',
+    p0.est ? `<button class="btn${p0.warn ? '' : ' primary'}" data-act="confirmEst">${ic('check')} Усе правильно — підтвердити ${p0.est}</button>` : '') + `
+${p0.est ? `<section class="card howcheck">
+  <header><h3>Як швидко звірити</h3>${p0.warn ? `<span class="pill warn">${ic('alert')} ${p0.warn} перевірити</span>` : `<span class="pill ok">${ic('check')} підозрілих нема</span>`}</header>
+  <ol class="howto">
+    <li><span>Відкрийте навчальний план школи — там години по паралелях (5 клас, 6 клас…).</span></li>
+    <li><span>Режим <b>«По паралелях»</b>: одна колонка на паралель замість трьох класів.</span></li>
+    <li><span>Число збігається — <b>«так»</b>. Не збігається — впишіть правильне, воно стане однаковим для всіх класів паралелі.</span></li>
+    <li><span><b>Помаранчеві</b> — спершу: там журнали нерівні або класи паралелі розходяться. Фільтр «Лише перевірити» покаже тільки їх.</span></li>
+  </ol>
+</section>` : ''}
 <section class="card">
   <div class="toolbar">
-    <div class="seg" role="group" aria-label="Які предмети показати"><button data-act="planAll" data-v="0" aria-pressed="${!showAll}"${used.length ? '' : ' disabled'}>Предмети з годинами</button><button data-act="planAll" data-v="1" aria-pressed="${showAll}">Усі предмети</button></div>
-    <div class="legend"><span><i class="sw"></i>вписано</span><span><i class="sw est"></i>підказка з Мрії — перевірте</span><span><i class="sw grp">2 групи</i>клас ділиться</span></div>
+    <div class="seg" role="group" aria-label="Режим"><button data-act="planMode" data-v="grade" aria-pressed="${planMode === 'grade'}">По паралелях</button><button data-act="planMode" data-v="class" aria-pressed="${planMode === 'class'}">По класах</button></div>
+    <div class="seg" role="group" aria-label="Які предмети"><button data-act="planAll" data-v="0" aria-pressed="${!planAll && !planWarnOnly}"${used.length ? '' : ' disabled'}>З годинами</button><button data-act="planAll" data-v="1" aria-pressed="${planAll && !planWarnOnly}">Усі предмети</button><button data-act="planWarn" aria-pressed="${planWarnOnly}"${p0.warn ? '' : ' disabled'}>Лише перевірити${p0.warn ? ' · ' + p0.warn : ''}</button></div>
     <span class="sp"></span>
-    <div class="row" style="align-items:center"><select id="copyFrom" style="width:auto" aria-label="Клас-зразок">${C.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><button class="btn small" data-act="copyPlan" title="Скопіювати години цього класу в інші класи тієї ж паралелі">${ic('copy')} Копіювати на паралель</button></div>
+    ${planMode === 'class' ? `<div class="row" style="align-items:center"><select id="copyFrom" style="width:auto" aria-label="Клас-зразок">${C.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><button class="btn small" data-act="copyPlan" title="Скопіювати години цього класу в інші класи тієї ж паралелі">${ic('copy')} Копіювати на паралель</button></div>` : ''}
   </div>
-  ${!showAll ? '<p class="hint">Щоб вписати години для нового предмета, натисніть «Усі предмети».</p>' : ''}
-  <div class="gridwrap"><table class="grid">
-    <thead><tr><th class="subj">Предмет</th>${C.map(c => `<th>${esc(c.name)}<small>${c.students ?? '?'} уч.</small></th>`).join('')}<th>Разом<small>годин вчителям</small></th></tr></thead>
-    <tbody>${subs.map(s => `<tr><th class="subj">${esc(s.name)}${s.split ? `<small>${SPLIT[s.split].toLowerCase()}</small>` : ''}</th>${C.map(c => cell(c, s)).join('')}<td class="tot" data-rt="${s.id}"></td></tr>`).join('')}</tbody>
-    <tfoot>
-      <tr><th class="subj">Годин у класі</th>${C.map(c => `<td data-ct="${c.id}"></td>`).join('')}<td data-ct="all"></td></tr>
-      <tr><th class="subj">Годин вчителям <small>з урахуванням груп</small></th>${C.map(c => `<td data-cg="${c.id}"></td>`).join('')}<td data-cg="all"></td></tr>
-    </tfoot>
-  </table></div>
-  <p class="hint">Кнопка під числом показує поділ: «весь клас» або «2 групи». Натисніть, щоб змінити вручну (з рамкою — задано вручну). Кожна група дає вчителю повні години предмета.</p>
+  <div class="legend"><span><i class="sw"></i>звірено</span><span><i class="sw est1"></i>з журналу — упевнено</span><span><i class="sw est"></i>перевірте</span>${planMode === 'class' ? '<span><i class="sw grp">2 групи</i>клас ділиться</span>' : ''}</div>
+  ${subs.length ? `<div class="gridwrap">${grid}</div>` : `<div class="empty">${ic('check')}<b>Нічого перевіряти</b><p>Підозрілих годин нема.</p></div>`}
+  <p class="hint">${planMode === 'grade' ? 'Число, вписане для паралелі, записується в усі її класи. Групи налаштовуються в режимі «По класах».' : 'Кнопка під числом — поділ: «весь клас» або «2 групи». Натисніть, щоб змінити вручну. Кожна група дає вчителю повні години предмета.'}</p>
 </section>
 <details class="more"><summary>${ic('plan')} Предмети <small>— назви, порядок, які предмети діляться на групи</small></summary><div class="in">
   <div class="row"><label class="field">Новий предмет<input id="newSubj" placeholder="Назва предмета"></label><label class="field" style="flex:0 0 240px">Поділ на групи<select id="newSplit">${SPLIT.map((t, i) => `<option value="${i}">${t}</option>`).join('')}</select></label><button class="btn" data-act="addSubj">${ic('plus')} Додати</button></div>
@@ -1234,7 +1305,14 @@ const ACT = {
     for (const p of Object.values(S.plan)) if (p.est) { delete p.est; n++; }
     save(); render(); toast(`Підтверджено: ${n}`);
   },
-  planAll: el => { planAll = el.dataset.v === '1'; render(); },
+  planAll: el => { planAll = el.dataset.v === '1'; planWarnOnly = false; render(); },
+  planWarn: () => { planWarnOnly = !planWarnOnly; render(); },
+  planMode: el => { planMode = el.dataset.v; render(); },
+  parOk: el => {
+    const [g, sid] = el.dataset.k.split('|'), s = byId(S.subjects, sid);
+    for (const c of S.classes) if (gradeOf(c.name) === +g && S.plan[c.id + '|' + sid]) delete S.plan[c.id + '|' + sid].est;
+    save(); keepScroll(render); toast(`${g} клас, ${s.name}: підтверджено`);
+  },
   distOnly: el => { dist.only = el.dataset.v === '1'; render(); },
   addClass: () => {
     const name = normClass($('#newClass').value), n = $('#newCount').value;
@@ -1390,12 +1468,25 @@ document.addEventListener('input', e => {
   const k = el.dataset.plan, v = parseFloat(String(el.value).replace(',', '.'));
   if (v > 0) { S.plan[k] = { ...S.plan[k], h: v }; delete S.plan[k].est; }
   else if (S.plan[k]) { delete S.plan[k].h; delete S.plan[k].est; if (!S.plan[k].g) delete S.plan[k]; }
-  el.parentElement.classList.remove('est'); el.parentElement.removeAttribute('title');
+  el.parentElement.classList.remove('est1', 'est2'); el.parentElement.removeAttribute('title');
   const b = el.nextElementSibling; if (b) b.style.visibility = v > 0 ? 'visible' : 'hidden';
   save(); planTotals(); renderNav();
 });
 document.addEventListener('change', e => {
-  const el = e.target, f = el.dataset.f; if (!f) return;
+  const el = e.target;
+  if (el.dataset.par) {
+    /* паралель: одне число для всіх класів паралелі */
+    const [g, sid] = el.dataset.par.split('|'), v = parseFloat(String(el.value).replace(',', '.'));
+    for (const c of S.classes) {
+      if (gradeOf(c.name) !== +g) continue;
+      const k = c.id + '|' + sid;
+      if (v > 0) { S.plan[k] = { ...S.plan[k], h: v }; delete S.plan[k].est; }
+      else if (S.plan[k]) { delete S.plan[k].h; delete S.plan[k].est; if (!S.plan[k].g) delete S.plan[k]; }
+    }
+    save(); keepScroll(render);
+    return;
+  }
+  const f = el.dataset.f; if (!f) return;
   const id = el.dataset.id, v = el.value, num = v === '' ? null : Math.max(0, +v);
   let redraw = false;
   switch (f) {
