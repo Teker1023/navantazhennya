@@ -437,11 +437,19 @@ function applyImport(info, res) {
   let c = S.classes.find(x => x.name === info.cls);
   const isNew = !c;
   if (!c) { c = { id: uid(), name: info.cls, students: null }; S.classes.push(c); }
-  if (info.students.length) {
-    const last = n => n.trim().split(/\s+/).pop();
-    c.students = info.students.length;
-    c.boys = info.students.filter(n => /(ович|евич|йович|ич|огли)$/i.test(last(n))).length;
-    c.girls = info.students.filter(n => /(івна|ївна|вна|кизи)$/i.test(last(n))).length;
+  /* Кількість учнів класу беремо з найбільшого журналу. Журнал групи містить лише частину класу,
+     тому він не зменшує кількість: ні в межах одного імпорту, ні пізніше (якщо менше 70 % класу). */
+  const n = info.students.length, batch = res.classMax || (res.classMax = {});
+  let countKept = false, partial = !!info.group;
+  if (n) {
+    partial = !!info.group || n < (batch[c.name] || 0) || (!batch[c.name] && c.students && n < c.students * 0.7);
+    if (!partial) {
+      const last = x => x.trim().split(/\s+/).pop();
+      batch[c.name] = n;
+      c.students = n;
+      c.boys = info.students.filter(x => /(ович|евич|йович|ич|огли)$/i.test(last(x))).length;
+      c.girls = info.students.filter(x => /(івна|ївна|вна|кизи)$/i.test(last(x))).length;
+    } else countKept = true;
   }
   c.src = 'Мрія';
   let s = null, est = null, planSet = false;
@@ -469,15 +477,23 @@ function applyImport(info, res) {
         if (groupsOf(c, s) < info.group) setGroups(info.group);
         const k = base + '|' + (info.group - 1);
         if (S.assign[k] !== t.id) { S.assign[k] = t.id; assigned = true; }
-      } else if (!keys().some(k => S.assign[k] === t.id)) {
-        let free = keys().find(k => !byId(S.teachers, S.assign[k]));
-        /* другий вчитель на тому ж предметі в класі — отже, клас поділено на групи */
-        if (!free && groupsOf(c, s) < 3) { setGroups(groupsOf(c, s) + 1); free = keys().find(k => !byId(S.teachers, S.assign[k])); }
-        if (free) { S.assign[free] = t.id; assigned = true; }
+      } else {
+        const holder = k => byId(S.teachers, S.assign[k]) ? S.assign[k] : '';
+        const free = () => keys().filter(k => !holder(k));
+        if (!keys().some(k => holder(k) === t.id)) {
+          let k = free()[0];
+          /* групу вже закрив інший вчитель «журналом на весь клас» — забираємо в нього одну з його груп */
+          if (!k) k = keys().slice().reverse().find(x => keys().filter(y => holder(y) === holder(x)).length > 1);
+          /* другий вчитель на тому ж предметі, а вільних груп нема — отже, клас поділено */
+          if (!k && groupsOf(c, s) < 3) { setGroups(groupsOf(c, s) + 1); k = free()[0]; }
+          if (k) { S.assign[k] = t.id; assigned = true; }
+        }
+        /* журнал на весь клас: вчитель веде й решту груп, поки їх ніхто не забрав */
+        if (!partial) for (const k of free()) { S.assign[k] = t.id; assigned = true; }
       }
     }
   }
-  res.push({ file: info.file, cls: c.name, isNew, students: info.students.length, boys: c.boys, girls: c.girls, subj: s?.name, est, planSet, teacher: t?.name, assigned, split, group: info.group });
+  res.push({ file: info.file, cls: c.name, isNew, students: info.students.length, boys: c.boys, girls: c.girls, subj: s?.name, est, planSet, teacher: t?.name, assigned, split, group: info.group, countKept, classCount: c.students });
 }
 let lastImport = null;
 async function importBuffer(buf, name, res) {
@@ -682,7 +698,7 @@ V.classes = () => {
   const list = cls();
   const imp = lastImport ? `<div class="notice ${lastImport.some(r => r.err) ? 'warn' : 'ok'}"><header class="form"><b>Імпорт: ${lastImport.filter(r => !r.err).length} з ${lastImport.length} файлів</b><span class="grow"></span><button class="x" data-act="closeImport" title="Закрити">×</button></header><ul>` +
     lastImport.map(r => r.err ? `<li class="bad">${esc(r.file)} — ${esc(r.err)}</li>` :
-      `<li><b>${esc(r.cls)}</b>${r.isNew ? ' (новий)' : ''}${r.subj ? ', ' + esc(r.subj) : ''} — ${r.students ? `учнів: ${r.students} (хл. ${r.boys}, дів. ${r.girls})` : 'учнів не знайдено'}${r.est ? `, уроків ~${r.est} на тиждень${r.planSet ? ' → внесено в план, перевірте' : ''}` : ''}${r.teacher ? `, вчитель: ${esc(r.teacher)}${r.group ? ` (група ${r.group})` : ''}${r.assigned ? ' → призначено' : ''}` : ''}${r.split > 1 ? `. <b>Клас поділено на ${r.split} групи</b> — перевірте в навчальному плані` : ''}</li>`).join('') + '</ul></div>' : '';
+      `<li><b>${esc(r.cls)}</b>${r.isNew ? ' (новий)' : ''}${r.subj ? ', ' + esc(r.subj) : ''} — ${!r.students ? 'учнів не знайдено' : r.countKept ? `у журналі ${r.students} учнів — схоже на групу, у класі лишається ${r.classCount}` : `учнів: ${r.students} (хл. ${r.boys}, дів. ${r.girls})`}${r.est ? `, уроків ~${r.est} на тиждень${r.planSet ? ' → внесено в план, перевірте' : ''}` : ''}${r.teacher ? `, вчитель: ${esc(r.teacher)}${r.group ? ` (група ${r.group})` : ''}${r.assigned ? ' → призначено' : ''}` : ''}${r.split > 1 ? `. <b>Клас поділено на ${r.split} групи</b> — перевірте в навчальному плані` : ''}</li>`).join('') + '</ul></div>' : '';
   return `
 <section class="card">
   <header><h2>Класи</h2></header>
