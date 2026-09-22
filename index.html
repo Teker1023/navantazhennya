@@ -863,7 +863,7 @@ function applyImport(info, res) {
     }
   }
   if (info.teacher) {
-    /* «Іваненко Олег» і «Іваненко Олег Петрович» — одна людина */
+    /* «Прізвище Ім’я» і «Прізвище Ім’я По батькові» — одна людина */
     const words = n => n.toLowerCase().split(/\s+/);
     const same = (a, b) => { const x = words(a), y = words(b), n = Math.min(x.length, y.length, 2); return n >= 2 && x.slice(0, n).join(' ') === y.slice(0, n).join(' '); };
     t = S.teachers.find(x => same(x.name, info.teacher));
@@ -1418,7 +1418,7 @@ ${how('Як рахується навантаження вчителя',
     ${hasQ('teachers') && !L.length ? `<div class="empty">${ic('teacher')}<b>Нікого не знайдено</b><p>За запитом «${esc(Q.teachers)}» нікого нема. Спробуйте прізвище, предмет або клас.</p></div>` : list}</section>
   <div class="stack">
     <section class="card"><header><h3>${ic('plus')} Додати вручну</h3></header>
-      <label class="field">ПІБ — кожен з нового рядка<textarea id="newTeachers" placeholder="Іваненко Ірина Петрівна&#10;Петренко Олег Васильович"></textarea></label>
+      <label class="field">ПІБ — кожен з нового рядка<textarea id="newTeachers" placeholder="Прізвище Ім’я По батькові&#10;Прізвище Ім’я По батькові"></textarea></label>
       <button class="btn primary" data-act="addTeachers">Додати вчителів</button></section>
     <section class="card"><header><h3>Додаткові години</h3></header>
       <p class="sub" style="margin-top:-6px">Гуртки, індивідуальне навчання, консультації — те, що теж входить у навантаження, але не в навчальний план.</p>
