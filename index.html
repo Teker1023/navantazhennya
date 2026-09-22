@@ -1599,7 +1599,7 @@ function payCell(t) {
 V.settings = () => pageHead('Дані і копії', 'Усе зберігається на цьому комп’ютері автоматично. Тут — дані школи, резервні копії та відновлення.') + `
 <div class="cols2">
   <section class="card"><header><h2>Школа</h2></header>
-    <label class="field">Назва школи<input data-f="set.school" value="${esc(S.school)}" placeholder="напр. Ільницький ЗЗСО І-ІІІ ст."></label>
+    <label class="field">Назва школи<input data-f="set.school" value="${esc(S.school)}" placeholder="напр. Заклад загальної середньої освіти І–ІІІ ст."></label>
     <div class="row"><label class="field">Навчальний рік<input data-f="set.year" value="${esc(S.year)}"></label><label class="field">Ставка, год/тиж<input type="number" min="1" data-f="set.stavka" value="${S.stavka}"></label></div>
     <div class="row"><label class="field">Ділити на групи від, учнів<input type="number" min="1" data-f="set.splitMin" value="${S.splitMin}"></label>
     <label class="field">Ліміт годин для адміністрації<input type="number" min="0" data-f="set.adminMax" value="${S.adminMax}"></label></div>
