@@ -863,7 +863,7 @@ function applyImport(info, res) {
     }
   }
   if (info.teacher) {
-    /* «Рябець Олександр» і «Рябець Олександр Андрійович» — одна людина */
+    /* «Іваненко Олег» і «Іваненко Олег Петрович» — одна людина */
     const words = n => n.toLowerCase().split(/\s+/);
     const same = (a, b) => { const x = words(a), y = words(b), n = Math.min(x.length, y.length, 2); return n >= 2 && x.slice(0, n).join(' ') === y.slice(0, n).join(' '); };
     t = S.teachers.find(x => same(x.name, info.teacher));
